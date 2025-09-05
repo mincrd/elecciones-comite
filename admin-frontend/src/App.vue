@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import axios from 'axios';
 
 // Componentes y Servicios de PrimeVue
@@ -14,9 +14,9 @@ import Calendar from 'primevue/calendar';
 import Checkbox from 'primevue/checkbox';
 import Toast from 'primevue/toast';
 import Tag from 'primevue/tag';
-import ProgressBar from 'primevue/progressbar';
 import ConfirmDialog from 'primevue/confirmdialog';
 import ProgressSpinner from 'primevue/progressspinner';
+import Chart from 'primevue/chart';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
@@ -30,7 +30,7 @@ const procesos = ref([]);
 const postulantes = ref([]);
 const resultados = ref([]);
 const selectedProceso = ref(null);
-const loadingResults = ref(false);
+const isLoading = ref({ procesos: true, detalles: false });
 let resultadosInterval = null;
 
 // Opciones para formularios
@@ -44,13 +44,30 @@ const formProceso = ref({ id: null, ano: new Date().getFullYear(), desde: '', ha
 const showPostulanteModal = ref(false);
 const formPostulante = ref({ id: null, nombre_completo: '', cargo: '', email: '', telefono: '', grupo_ocupacional: '', valores: [] });
 
+// --- ESTADO PARA GRÁFICO ---
+const chartData = ref();
+const chartOptions = ref({
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: {
+                usePointStyle: true,
+                color: '#4b5563'
+            }
+        }
+    }
+});
+
 // --- LÓGICA DE API ---
 const fetchProcesos = async () => {
+    isLoading.value.procesos = true;
     try {
         const response = await axios.get(`${apiUrl}/procesos`);
-        procesos.value = response.data;
+        procesos.value = response.data; 
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los procesos.', life: 3000 });
+    } finally {
+        isLoading.value.procesos = false;
     }
 };
 
@@ -70,32 +87,26 @@ const saveProceso = async () => {
         showProcesoModal.value = false;
         fetchProcesos();
     } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar el proceso.', life: 3000 });
+        const message = error.response?.data?.errors ? Object.values(error.response.data.errors).join(' ') : 'No se pudo guardar el proceso.';
+        toast.add({ severity: 'error', summary: 'Error', detail: message, life: 4000 });
     }
 };
 
-const fetchPostulantes = async (procesoId) => {
+const fetchDetallesProceso = async (procesoId) => {
+    isLoading.value.detalles = true;
     try {
-        const response = await axios.get(`${apiUrl}/postulantes?proceso_id=${procesoId}`);
-        postulantes.value = response.data.data;
+        const [postulantesRes, resultadosRes] = await Promise.all([
+            axios.get(`${apiUrl}/postulantes?proceso_id=${procesoId}`),
+            axios.get(`${apiUrl}/resultados/${procesoId}`)
+        ]);
+        postulantes.value = postulantesRes.data.data;
+        resultados.value = Array.isArray(resultadosRes.data) ? resultadosRes.data : [];
     } catch (error) {
         postulantes.value = [];
-    }
-};
-
-const fetchResultados = async (procesoId) => {
-    loadingResults.value = true;
-    try {
-        const response = await axios.get(`${apiUrl}/resultados/${procesoId}`);
-        if (response && Array.isArray(response.data)) {
-            resultados.value = response.data;
-        } else {
-            resultados.value = [];
-        }
-    } catch (error) {
         resultados.value = [];
+        toast.add({ severity: 'warn', summary: 'Aviso', detail: 'No se pudieron cargar los detalles del proceso.', life: 3000 });
     } finally {
-        loadingResults.value = false;
+        isLoading.value.detalles = false;
     }
 };
 
@@ -111,9 +122,10 @@ const savePostulante = async () => {
             toast.add({ severity: 'success', summary: 'Éxito', detail: 'Postulante creado.', life: 3000 });
         }
         showPostulanteModal.value = false;
-        fetchPostulantes(selectedProceso.value.id);
+        fetchDetallesProceso(selectedProceso.value.id);
     } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar el postulante.', life: 3000 });
+        const message = error.response?.data?.errors ? Object.values(error.response.data.errors).join(' ') : 'No se pudo guardar el postulante.';
+        toast.add({ severity: 'error', summary: 'Error', detail: message, life: 4000 });
     }
 };
 
@@ -129,8 +141,7 @@ const deletePostulante = (id) => {
             try {
                 await axios.delete(`${apiUrl}/postulantes/${id}`);
                 toast.add({ severity: 'warn', summary: 'Eliminado', detail: 'Postulante eliminado.', life: 3000 });
-                fetchPostulantes(selectedProceso.value.id);
-                fetchResultados(selectedProceso.value.id);
+                fetchDetallesProceso(selectedProceso.value.id);
             } catch (error) {
                 toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el postulante.', life: 3000 });
             }
@@ -140,87 +151,92 @@ const deletePostulante = (id) => {
 
 // --- MANEJO DE UI ---
 const openProcesoModal = (proceso = null) => {
-    formProceso.value = proceso
-        ? { ...proceso, desde: new Date(proceso.desde), hasta: new Date(proceso.hasta) }
-        : { id: null, ano: new Date().getFullYear(), desde: '', hasta: '', estado: 'Cerrado' };
+    formProceso.value = proceso ? { ...proceso, desde: new Date(proceso.desde), hasta: new Date(proceso.hasta) } : { id: null, ano: new Date().getFullYear(), desde: '', hasta: '', estado: 'Cerrado' };
     showProcesoModal.value = true;
 };
 
 const openPostulanteModal = (postulante = null) => {
-    formPostulante.value = postulante
-        ? { ...postulante }
-        : { id: null, nombre_completo: '', cargo: '', email: '', telefono: '', grupo_ocupacional: '', valores: [] };
+    formPostulante.value = postulante ? { ...postulante } : { id: null, nombre_completo: '', cargo: '', email: '', telefono: '', grupo_ocupacional: '', valores: [] };
     showPostulanteModal.value = true;
 };
 
 const selectProceso = (proceso) => {
     selectedProceso.value = proceso;
-    // **LA CORRECCIÓN DEFINITIVA: Limpiar ambos arrays inmediatamente**
     postulantes.value = []; 
     resultados.value = [];
     
-    // Iniciar las nuevas cargas de datos
-    fetchPostulantes(proceso.id);
-    fetchResultados(proceso.id);
+    fetchDetallesProceso(proceso.id);
 
     if (resultadosInterval) clearInterval(resultadosInterval);
     resultadosInterval = setInterval(() => {
-        if (selectedProceso.value && !loadingResults.value) {
-            fetchResultados(selectedProceso.value.id);
+        if (selectedProceso.value && !isLoading.value.detalles) {
+            fetchDetallesProceso(selectedProceso.value.id);
         }
-    }, 10000);
+    }, 15000);
 };
 
-// --- COMPUTED PROPERTIES ---
+// --- COMPUTED PROPERTIES & WATCHERS ---
 const totalVotos = computed(() => {
     if (!Array.isArray(resultados.value)) return 0;
     return resultados.value.reduce((total, item) => total + (item.total_votos || 0), 0);
 });
 
-const getPorcentajeVotos = (votos) => {
-    if (totalVotos.value === 0) return 0;
-    return (votos / totalVotos.value) * 100;
-};
+watch(resultados, (newResultados) => {
+    if (newResultados && newResultados.length > 0) {
+        chartData.value = {
+            labels: newResultados.map(r => r.nombre_completo),
+            datasets: [{
+                data: newResultados.map(r => r.total_votos),
+                backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726', '#26A69A', '#AB47BC', '#78909C', '#EC407A'],
+                hoverBackgroundColor: ['#64B5F6', '#81C784', '#FFB74D', '#4DB6AC', '#BA68C8', '#90A4AE', '#F06292']
+            }]
+        };
+    } else {
+        chartData.value = null;
+    }
+}, { deep: true });
 
 // --- LIFECYCLE HOOKS ---
 onMounted(fetchProcesos);
 </script>
 
 <template>
-    <Toast />
+    <Toast position="top-center" />
     <ConfirmDialog />
-    <div class="p-4 sm:p-8 max-w-7xl mx-auto bg-gray-50 min-h-screen">
-        <header class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-800">Panel de Administración</h1>
-            <p class="text-gray-500">Gestión del Comité de Ética</p>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Panel de Administración</h1>
+                <p class="text-gray-500">Gestión del Comité de Ética</p>
+            </div>
+            <i class="pi pi-shield text-5xl text-blue-500"></i>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Columna de Procesos -->
             <div class="lg:col-span-1">
-                <Card>
+                <Card class="h-full shadow-lg">
                     <template #title>
                         <div class="flex justify-between items-center">
-                            <span>Procesos</span>
-                            <Button icon="pi pi-plus" label="Nuevo" @click="openProcesoModal()" />
+                            <span class="text-xl font-semibold">Procesos Electorales</span>
+                            <Button icon="pi pi-plus" rounded @click="openProcesoModal()" v-tooltip.left="'Crear nuevo proceso'" />
                         </div>
                     </template>
                     <template #content>
-                        <div class="space-y-3">
+                        <div v-if="isLoading.procesos" class="flex justify-center py-8">
+                            <ProgressSpinner style="width: 40px; height: 40px" />
+                        </div>
+                        <div v-else class="space-y-3">
                             <div v-for="proceso in procesos" :key="proceso.id"
                                 @click="selectProceso(proceso)"
-                                class="p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md"
-                                :class="{'bg-indigo-50 border-indigo-500': selectedProceso?.id === proceso.id}">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="font-bold text-gray-800">Año: {{ proceso.ano }}</p>
-                                        <p class="text-sm text-gray-500">{{ proceso.desde }} al {{ proceso.hasta }}</p>
-                                    </div>
-                                    <Tag :value="proceso.estado" :severity="proceso.estado === 'Abierto' ? 'success' : 'danger'" />
+                                class="proceso-card"
+                                :class="{'selected': selectedProceso?.id === proceso.id}">
+                                <div class="flex-grow">
+                                    <p class="font-bold text-gray-800">Año: {{ proceso.ano }}</p>
+                                    <p class="text-sm text-gray-500">{{ proceso.desde }} al {{ proceso.hasta }}</p>
                                 </div>
-                                <div class="mt-3 text-right">
-                                    <Button label="Editar" icon="pi pi-pencil" class="p-button-text p-button-sm" @click.stop="openProcesoModal(proceso)" />
-                                </div>
+                                <Tag :value="proceso.estado" :severity="proceso.estado === 'Abierto' ? 'success' : 'danger'" rounded />
+                                <Button icon="pi pi-pencil" text rounded class="edit-btn" @click.stop="openProcesoModal(proceso)" />
                             </div>
                             <p v-if="!procesos?.length" class="text-center text-gray-500 py-4">No hay procesos creados.</p>
                         </div>
@@ -231,61 +247,61 @@ onMounted(fetchProcesos);
             <!-- Columna de Detalles -->
             <div class="lg:col-span-2 space-y-8">
                 <div v-if="selectedProceso">
-                    <!-- Postulantes -->
-                    <Card>
-                        <template #title>
-                            <div class="flex justify-between items-center">
-                                <span>Postulantes del Proceso {{ selectedProceso.ano }}</span>
-                                <Button icon="pi pi-user-plus" label="Agregar" @click="openPostulanteModal()" severity="secondary"/>
-                            </div>
-                        </template>
-                        <template #content>
-                            <DataTable :value="postulantes" responsiveLayout="scroll" size="small">
-                                <Column field="nombre_completo" header="Nombre"></Column>
-                                <Column field="grupo_ocupacional" header="Grupo"></Column>
-                                <Column field="email" header="Email"></Column>
-                                <Column header="Acciones">
-                                    <template #body="slotProps">
-                                        <Button icon="pi pi-pencil" class="p-button-rounded p-button-text" @click="openPostulanteModal(slotProps.data)" />
-                                        <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger" @click="deletePostulante(slotProps.data.id)" />
-                                    </template>
-                                </Column>
-                                <template #empty>No hay postulantes para este proceso.</template>
-                            </DataTable>
-                        </template>
-                    </Card>
-                    <!-- Resultados -->
-                    <Card>
-                        <template #title>
-                            <div class="flex justify-between items-center">
-                                <span>Resultados en Tiempo Real</span>
-                                <Button icon="pi pi-refresh" class="p-button-rounded p-button-text" @click="fetchResultados(selectedProceso.id)" :disabled="loadingResults" />
-                            </div>
-                        </template>
-                        <template #content>
-                            <div v-if="loadingResults" class="flex flex-col justify-center items-center py-8">
-                                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" animationDuration=".5s" />
-                                <p class="mt-4 text-gray-500">Cargando resultados...</p>
-                            </div>
-                            <div v-else>
-                                <div v-if="resultados && resultados.length > 0" class="space-y-4">
-                                    <div v-for="resultado in resultados" :key="resultado.id">
-                                        <div class="flex justify-between items-center mb-1">
-                                            <p class="font-semibold">{{ resultado.nombre_completo }}</p>
-                                            <p class="font-bold text-indigo-600">{{ resultado.total_votos }} Votos</p>
+                    <div v-if="isLoading.detalles" class="flex justify-center items-center h-96">
+                        <ProgressSpinner />
+                    </div>
+                    <div v-else class="space-y-8">
+                        <!-- Resultados -->
+                        <Card class="shadow-lg">
+                             <template #title>
+                                <span class="text-xl font-semibold">Resultados: Proceso {{ selectedProceso.ano }}</span>
+                            </template>
+                            <template #content>
+                                <div v-if="totalVotos > 0" class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                    <div class="flex justify-center">
+                                        <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-full max-w-xs" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="font-bold text-lg text-gray-700">Total de Votos: {{ totalVotos }}</div>
+                                        <div v-for="res in resultados" :key="res.id" class="text-sm">
+                                            <span class="font-medium">{{res.nombre_completo}}:</span> 
+                                            <span class="text-blue-600 font-semibold ml-2">{{res.total_votos}} votos</span>
                                         </div>
-                                        <ProgressBar :value="getPorcentajeVotos(resultado.total_votos)" />
                                     </div>
                                 </div>
-                                <p v-else class="text-center text-gray-500 py-4">Aún no hay votos registrados.</p>
-                            </div>
-                        </template>
-                    </Card>
+                                <p v-else class="text-center text-gray-500 py-8">Aún no hay votos registrados para este proceso.</p>
+                            </template>
+                        </Card>
+                         <!-- Postulantes -->
+                        <Card class="shadow-lg">
+                            <template #title>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-semibold">Postulantes</span>
+                                    <Button icon="pi pi-user-plus" label="Agregar" @click="openPostulanteModal()" severity="secondary"/>
+                                </div>
+                            </template>
+                            <template #content>
+                                <DataTable :value="postulantes" responsiveLayout="scroll" size="small" stripedRows>
+                                    <Column field="nombre_completo" header="Nombre"></Column>
+                                    <Column field="grupo_ocupacional" header="Grupo"></Column>
+                                    <Column field="email" header="Email"></Column>
+                                    <Column header="Acciones" style="width: 8rem; text-align: center;">
+                                        <template #body="slotProps">
+                                            <Button icon="pi pi-pencil" text rounded @click="openPostulanteModal(slotProps.data)" />
+                                            <Button icon="pi pi-trash" text rounded severity="danger" @click="deletePostulante(slotProps.data.id)" />
+                                        </template>
+                                    </Column>
+                                    <template #empty>No hay postulantes para este proceso.</template>
+                                </DataTable>
+                            </template>
+                        </Card>
+                    </div>
                 </div>
-                <Card v-else>
+                <Card v-else class="shadow-lg">
                     <template #content>
-                        <div class="flex items-center justify-center h-64">
-                            <p class="text-gray-500 text-lg">Seleccione un proceso para ver los detalles.</p>
+                        <div class="flex flex-col items-center justify-center h-96 text-center">
+                            <i class="pi pi-inbox text-6xl text-gray-300"></i>
+                            <p class="text-gray-500 text-lg mt-4">Seleccione un proceso para ver sus detalles.</p>
                         </div>
                     </template>
                 </Card>
@@ -355,6 +371,52 @@ onMounted(fetchProcesos);
 </template>
 
 <style>
+body, .admin-container {
+    background-color: #f8fafc; /* Un gris más claro y suave */
+    font-family: 'Inter', sans-serif;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 2rem;
+}
+
+.proceso-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #ffffff;
+}
+
+.proceso-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border-color: #c7d2fe;
+}
+
+.proceso-card.selected {
+    border-color: #6366f1;
+    background-color: #eef2ff;
+    box-shadow: 0 0 0 2px #c7d2fe;
+}
+
+.proceso-card .edit-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.proceso-card:hover .edit-btn {
+    opacity: 1;
+}
+
 .field {
     margin-bottom: 1rem;
 }

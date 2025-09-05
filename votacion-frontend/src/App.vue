@@ -132,78 +132,173 @@ const reiniciarProceso = () => {
 </script>
 
 <template>
-    <Toast />
-    <div class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-        <Card class="w-full max-w-lg shadow-2xl">
-            <template #title>
-                <div class="text-center">
-                    <h1 class="text-2xl font-bold text-gray-800">Votación del Comité de Ética</h1>
-                </div>
-            </template>
+    <Toast position="top-center" />
+    <div class="votacion-container">
+        <Card class="w-full max-w-2xl shadow-2xl rounded-2xl">
             <template #content>
-                <!-- Paso 1: Identificación -->
-                <div v-if="currentStep === 1">
-                    <p class="text-center text-gray-600 mb-6">Para continuar, por favor ingrese sus datos y seleccione su grupo ocupacional.</p>
-                    <div class="space-y-4">
-                        <div class="p-fluid">
-                            <label for="email">Correo Electrónico</label>
-                            <InputText id="email" v-model="identificacionForm.email" type="email" placeholder="ejemplo@correo.com" />
-                        </div>
-                        <div class="text-center text-gray-500 font-semibold">O</div>
-                        <div class="p-fluid">
-                            <label for="no_empleado">Número de Empleado</label>
-                            <InputText id="no_empleado" v-model="identificacionForm.no_empleado" placeholder="Ej: 12345" />
-                        </div>
-                        <div class="p-fluid mt-4">
-                            <label for="grupo">Grupo Ocupacional</label>
-                            <Dropdown id="grupo" v-model="identificacionForm.grupo_ocupacional" :options="grupoOcupacionalOptions" placeholder="Seleccione su grupo" />
-                        </div>
-                    </div>
-                    <div class="mt-6">
-                        <Button label="Ingresar para Votar" icon="pi pi-arrow-right" class="w-full" @click="handleIdentificacion" :loading="isLoading" />
-                    </div>
-                </div>
+                <div class="p-4 sm:p-8">
+                    <header class="text-center mb-8">
+                        <i class="pi pi-check-to-slot text-5xl text-blue-500"></i>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-4">Votación del Comité de Ética</h1>
+                    </header>
 
-                <!-- Paso 2: Votación -->
-                <div v-if="currentStep === 2">
-                     <p class="text-center text-gray-600 mb-6">Seleccione el candidato de su preferencia.</p>
-                     <div v-if="candidatos.length > 0" class="space-y-4">
-                        <div v-for="candidato in candidatos" :key="candidato.id" 
-                             class="p-4 border rounded-lg flex items-center cursor-pointer transition-colors"
-                             :class="{'bg-indigo-50 border-indigo-500': selectedCandidato === candidato.id}"
-                             @click="selectedCandidato = candidato.id">
-                            <RadioButton v-model="selectedCandidato" :inputId="candidato.id.toString()" name="candidato" :value="candidato.id" />
-                            <div class="ml-4">
-                                <label :for="candidato.id.toString()" class="font-bold text-lg text-gray-800">{{ candidato.nombre_completo }}</label>
-                                <p class="text-gray-600">{{ candidato.cargo }}</p>
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    <Chip v-for="valor in candidato.valores" :key="valor" :label="valor" class="text-xs" />
+                    <transition name="fade" mode="out-in">
+                        <!-- Paso 1: Identificación -->
+                        <div v-if="currentStep === 1" key="step1">
+                            <p class="text-center text-gray-600 mb-8">Para continuar, por favor ingrese sus datos y seleccione su grupo ocupacional.</p>
+                            <div class="space-y-4">
+                                <div class="p-fluid">
+                                    <label for="email" class="font-semibold">Correo Electrónico</label>
+                                    <InputText id="email" v-model="identificacionForm.email" type="email" placeholder="ejemplo@correo.com" class="mt-1" />
+                                </div>
+                                <div class="divider"><span>O</span></div>
+                                <div class="p-fluid">
+                                    <label for="no_empleado" class="font-semibold">Número de Empleado</label>
+                                    <InputText id="no_empleado" v-model="identificacionForm.no_empleado" placeholder="Ej: 12345" class="mt-1" />
+                                </div>
+                                <div class="p-fluid mt-4">
+                                    <label for="grupo" class="font-semibold">Grupo Ocupacional</label>
+                                    <Dropdown id="grupo" v-model="identificacionForm.grupo_ocupacional" :options="grupoOcupacionalOptions" placeholder="Seleccione su grupo" class="mt-1" />
                                 </div>
                             </div>
+                            <div class="mt-8">
+                                <Button label="Ingresar para Votar" icon="pi pi-arrow-right" iconPos="right" class="w-full p-button-lg" @click="handleIdentificacion" :loading="isLoading" />
+                            </div>
                         </div>
-                     </div>
-                     <div v-else class="text-center py-8">
-                         <p class="text-gray-500">No hay candidatos registrados para su grupo ocupacional en este proceso.</p>
-                     </div>
-                     <div class="mt-6">
-                        <Button label="Emitir Voto" icon="pi pi-check" class="w-full" @click="handleVoto" :loading="isLoading" :disabled="!candidatos.length" />
-                    </div>
-                </div>
 
-                <!-- Paso 3: Agradecimiento -->
-                <div v-if="currentStep === 3" class="text-center py-8">
-                    <i class="pi pi-check-circle text-6xl text-green-500"></i>
-                    <h2 class="mt-4 text-2xl font-bold text-gray-800">¡Gracias por su participación!</h2>
-                    <p class="text-gray-600 mt-2">Su voto ha sido registrado exitosamente.</p>
-                    <Button label="Volver al Inicio" icon="pi pi-home" class="mt-6 p-button-text" @click="reiniciarProceso" />
+                        <!-- Paso 2: Votación -->
+                        <div v-else-if="currentStep === 2" key="step2">
+                            <p class="text-center text-gray-600 mb-8">Seleccione el candidato de su preferencia.</p>
+                            <div v-if="candidatos.length > 0" class="space-y-4 candidate-list">
+                                <div v-for="candidato in candidatos" :key="candidato.id" 
+                                     class="candidate-card"
+                                     :class="{'selected': selectedCandidato === candidato.id}"
+                                     @click="selectedCandidato = candidato.id">
+                                    <RadioButton v-model="selectedCandidato" :inputId="candidato.id.toString()" name="candidato" :value="candidato.id" />
+                                    <div class="ml-4 flex-grow">
+                                        <label :for="candidato.id.toString()" class="font-bold text-xl text-gray-800">{{ candidato.nombre_completo }}</label>
+                                        <p class="text-blue-800 font-medium">{{ candidato.cargo }}</p>
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                            <Chip v-for="valor in candidato.valores" :key="valor" :label="valor" class="text-xs custom-chip" />
+                                        </div>
+                                    </div>
+                                    <i v-if="selectedCandidato === candidato.id" class="pi pi-check-circle text-2xl text-white check-icon"></i>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-8">
+                                <p class="text-gray-500">No hay candidatos registrados para su grupo ocupacional en este proceso.</p>
+                            </div>
+                            <div class="mt-8">
+                                <Button label="Confirmar Voto" icon="pi pi-check" class="w-full p-button-success p-button-lg" @click="handleVoto" :loading="isLoading" :disabled="!candidatos.length" />
+                            </div>
+                        </div>
+
+                        <!-- Paso 3: Agradecimiento -->
+                        <div v-else-if="currentStep === 3" key="step3" class="text-center py-8">
+                            <i class="pi pi-verified text-8xl text-green-500"></i>
+                            <h2 class="mt-6 text-3xl font-bold text-gray-800">¡Gracias por su participación!</h2>
+                            <p class="text-gray-600 mt-2 text-lg">Su voto ha sido registrado exitosamente.</p>
+                            <Button label="Volver al Inicio" icon="pi pi-home" class="mt-8 p-button-text p-button-lg" @click="reiniciarProceso" />
+                        </div>
+                    </transition>
                 </div>
             </template>
         </Card>
     </div>
 </template>
 
-<style>
-body, #app {
-    background-color: #f3f4f6;
+<style scoped>
+.votacion-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+    background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+}
+
+.candidate-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #ffffff;
+    overflow: hidden;
+}
+
+.candidate-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border-color: #93c5fd;
+}
+
+.candidate-card.selected {
+    border-color: #3b82f6;
+    background-color: #3b82f6;
+    color: white;
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.candidate-card.selected label,
+.candidate-card.selected p {
+    color: white !important;
+}
+
+.check-icon {
+    position: absolute;
+    top: 50%;
+    right: 1.5rem;
+    transform: translateY(-50%);
+}
+
+.custom-chip {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #f0f9ff;
+    font-weight: 500;
+}
+
+.candidate-card:not(.selected) .custom-chip {
+    background-color: #eff6ff;
+    color: #3b82f6;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #9ca3af;
+    font-weight: 600;
+    margin: 1rem 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #d1d5db;
+}
+
+.divider:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: .5em;
+}
+
+/* Transición de desvanecimiento */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>
+
