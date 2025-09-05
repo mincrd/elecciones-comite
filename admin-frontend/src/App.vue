@@ -99,7 +99,7 @@ const fetchDetallesProceso = async (procesoId) => {
             axios.get(`${apiUrl}/postulantes?proceso_id=${procesoId}`),
             axios.get(`${apiUrl}/resultados/${procesoId}`)
         ]);
-        postulantes.value = postulantesRes.data.data;
+        postulantes.value = postulantesRes.data;
         resultados.value = Array.isArray(resultadosRes.data) ? resultadosRes.data : [];
     } catch (error) {
         postulantes.value = [];
