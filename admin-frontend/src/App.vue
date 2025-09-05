@@ -30,7 +30,7 @@ const procesos = ref([]);
 const postulantes = ref([]);
 const resultados = ref([]);
 const selectedProceso = ref(null);
-const loadingResults = ref(false); // **NUEVO: Estado de carga para los resultados**
+const loadingResults = ref(false);
 let resultadosInterval = null;
 
 // Opciones para formularios
@@ -48,7 +48,7 @@ const formPostulante = ref({ id: null, nombre_completo: '', cargo: '', email: ''
 const fetchProcesos = async () => {
     try {
         const response = await axios.get(`${apiUrl}/procesos`);
-        procesos.value = response.data.data;
+        procesos.value = response.data;
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los procesos.', life: 3000 });
     }
@@ -84,7 +84,7 @@ const fetchPostulantes = async (procesoId) => {
 };
 
 const fetchResultados = async (procesoId) => {
-    loadingResults.value = true; // **NUEVO: Activar el estado de carga**
+    loadingResults.value = true;
     try {
         const response = await axios.get(`${apiUrl}/resultados/${procesoId}`);
         if (response && Array.isArray(response.data)) {
@@ -95,7 +95,7 @@ const fetchResultados = async (procesoId) => {
     } catch (error) {
         resultados.value = [];
     } finally {
-        loadingResults.value = false; // **NUEVO: Desactivar la carga, pase lo que pase**
+        loadingResults.value = false;
     }
 };
 
@@ -155,15 +155,17 @@ const openPostulanteModal = (postulante = null) => {
 
 const selectProceso = (proceso) => {
     selectedProceso.value = proceso;
-    postulantes.value = []; // Se limpian los datos antiguos
+    // **LA CORRECCIÓN DEFINITIVA: Limpiar ambos arrays inmediatamente**
+    postulantes.value = []; 
+    resultados.value = [];
     
-    // Se inician las nuevas cargas
+    // Iniciar las nuevas cargas de datos
     fetchPostulantes(proceso.id);
     fetchResultados(proceso.id);
 
     if (resultadosInterval) clearInterval(resultadosInterval);
     resultadosInterval = setInterval(() => {
-        if (selectedProceso.value && !loadingResults.value) { // No actualizar si ya está cargando
+        if (selectedProceso.value && !loadingResults.value) {
             fetchResultados(selectedProceso.value.id);
         }
     }, 10000);
@@ -220,7 +222,7 @@ onMounted(fetchProcesos);
                                     <Button label="Editar" icon="pi pi-pencil" class="p-button-text p-button-sm" @click.stop="openProcesoModal(proceso)" />
                                 </div>
                             </div>
-                            <p v-if="!procesos.length" class="text-center text-gray-500 py-4">No hay procesos creados.</p>
+                            <p v-if="!procesos?.length" class="text-center text-gray-500 py-4">No hay procesos creados.</p>
                         </div>
                     </template>
                 </Card>
@@ -261,15 +263,12 @@ onMounted(fetchProcesos);
                             </div>
                         </template>
                         <template #content>
-                            <!-- **NUEVO: SECCIÓN DE CARGA** -->
                             <div v-if="loadingResults" class="flex flex-col justify-center items-center py-8">
                                 <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" animationDuration=".5s" />
                                 <p class="mt-4 text-gray-500">Cargando resultados...</p>
                             </div>
-
-                            <!-- **NUEVO: SECCIÓN DE DATOS (SÓLO SE MUESTRA SI NO ESTÁ CARGANDO)** -->
                             <div v-else>
-                                <div v-if="resultados.length > 0" class="space-y-4">
+                                <div v-if="resultados && resultados.length > 0" class="space-y-4">
                                     <div v-for="resultado in resultados" :key="resultado.id">
                                         <div class="flex justify-between items-center mb-1">
                                             <p class="font-semibold">{{ resultado.nombre_completo }}</p>
@@ -360,5 +359,4 @@ onMounted(fetchProcesos);
     margin-bottom: 1rem;
 }
 </style>
-
 
