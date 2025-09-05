@@ -4,20 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Tymon\JWTAuth\Contracts\JWTSubject; // ¡Importante!
+use Tymon\JWTAuth\Contracts\JWTSubject; // <-- ¡Importante!
 
-class RegistroVoto extends Model implements JWTSubject // ¡Importante!
+// El modelo de votante ahora es compatible con JWT
+class RegistroVoto extends Model implements JWTSubject
 {
     use HasFactory;
 
-    protected $fillable = ['email', 'no_empleado', 'grupo_ocupacional'];
+    protected $fillable = [
+        'email',
+        'no_empleado',
+        'grupo_ocupacional',
+    ];
 
     public function voto()
     {
         return $this->hasOne(Voto::class);
     }
 
-    // Métodos requeridos por la interfaz JWTSubject
+    // --- MÉTODOS REQUERIDOS POR JWTSubject ---
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.
