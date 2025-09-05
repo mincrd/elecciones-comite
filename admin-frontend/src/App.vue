@@ -16,6 +16,7 @@ import Toast from 'primevue/toast';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
 import ConfirmDialog from 'primevue/confirmdialog';
+import ProgressSpinner from 'primevue/progressspinner';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
@@ -29,6 +30,7 @@ const procesos = ref([]);
 const postulantes = ref([]);
 const resultados = ref([]);
 const selectedProceso = ref(null);
+const loadingResults = ref(false); // **NUEVO: Estado de carga para los resultados**
 let resultadosInterval = null;
 
 // Opciones para formularios
@@ -81,21 +83,19 @@ const fetchPostulantes = async (procesoId) => {
     }
 };
 
-// ** FUNCIÓN DE CARGA DE DATOS REFORZADA **
 const fetchResultados = async (procesoId) => {
+    loadingResults.value = true; // **NUEVO: Activar el estado de carga**
     try {
         const response = await axios.get(`${apiUrl}/resultados/${procesoId}`);
-        // Se asegura de que la respuesta sea un array antes de asignarla.
         if (response && Array.isArray(response.data)) {
             resultados.value = response.data;
         } else {
-            // Si no, asigna un array vacío para evitar errores.
             resultados.value = [];
         }
     } catch (error) {
-        // En cualquier caso de error, siempre será un array vacío.
         resultados.value = [];
-        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los resultados.', life: 3000 });
+    } finally {
+        loadingResults.value = false; // **NUEVO: Desactivar la carga, pase lo que pase**
     }
 };
 
@@ -155,15 +155,17 @@ const openPostulanteModal = (postulante = null) => {
 
 const selectProceso = (proceso) => {
     selectedProceso.value = proceso;
-    postulantes.value = [];
-    resultados.value = [];
-
+    postulantes.value = []; // Se limpian los datos antiguos
+    
+    // Se inician las nuevas cargas
     fetchPostulantes(proceso.id);
     fetchResultados(proceso.id);
 
     if (resultadosInterval) clearInterval(resultadosInterval);
     resultadosInterval = setInterval(() => {
-        if (selectedProceso.value) fetchResultados(selectedProceso.value.id);
+        if (selectedProceso.value && !loadingResults.value) { // No actualizar si ya está cargando
+            fetchResultados(selectedProceso.value.id);
+        }
     }, 10000);
 };
 
@@ -255,23 +257,29 @@ onMounted(fetchProcesos);
                         <template #title>
                             <div class="flex justify-between items-center">
                                 <span>Resultados en Tiempo Real</span>
-                                <Button icon="pi pi-refresh" class="p-button-rounded p-button-text" @click="fetchResultados(selectedProceso.id)" />
+                                <Button icon="pi pi-refresh" class="p-button-rounded p-button-text" @click="fetchResultados(selectedProceso.id)" :disabled="loadingResults" />
                             </div>
                         </template>
                         <template #content>
-                            <!-- ** PLANTILLA REFACTORIZADA Y MÁS SEGURA ** -->
-                            <div class="space-y-4">
-                                <!-- El v-for simplemente no se ejecutará si `resultados` está vacío, evitando el error. -->
-                                <div v-for="resultado in resultados" :key="resultado.id">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <p class="font-semibold">{{ resultado.nombre_completo }}</p>
-                                        <p class="font-bold text-indigo-600">{{ resultado.total_votos }} Votos</p>
-                                    </div>
-                                    <ProgressBar :value="getPorcentajeVotos(resultado.total_votos)" />
-                                </div>
+                            <!-- **NUEVO: SECCIÓN DE CARGA** -->
+                            <div v-if="loadingResults" class="flex flex-col justify-center items-center py-8">
+                                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" animationDuration=".5s" />
+                                <p class="mt-4 text-gray-500">Cargando resultados...</p>
                             </div>
-                             <!-- El mensaje de "no hay votos" se muestra por separado, verificando la longitud de forma segura. -->
-                            <p v-if="!resultados || resultados.length === 0" class="text-center text-gray-500 py-4">Aún no hay votos registrados.</p>
+
+                            <!-- **NUEVO: SECCIÓN DE DATOS (SÓLO SE MUESTRA SI NO ESTÁ CARGANDO)** -->
+                            <div v-else>
+                                <div v-if="resultados.length > 0" class="space-y-4">
+                                    <div v-for="resultado in resultados" :key="resultado.id">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <p class="font-semibold">{{ resultado.nombre_completo }}</p>
+                                            <p class="font-bold text-indigo-600">{{ resultado.total_votos }} Votos</p>
+                                        </div>
+                                        <ProgressBar :value="getPorcentajeVotos(resultado.total_votos)" />
+                                    </div>
+                                </div>
+                                <p v-else class="text-center text-gray-500 py-4">Aún no hay votos registrados.</p>
+                            </div>
                         </template>
                     </Card>
                 </div>
