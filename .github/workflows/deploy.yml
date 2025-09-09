@@ -63,16 +63,42 @@ jobs:
           package: ./votacion-frontend/dist
 
   # =====================
-  # API Votacion (Laravel/PHP)
+  # API Votacion (Laravel + Vite)
   # =====================
   api-votacion:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
+      # Instalar PHP + Composer
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'   # o la que uses en Azure
+          extensions: mbstring, bcmath, intl, pdo, mysql
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+        working-directory: api-votacion
+
+      # Instalar Node + Vite
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.19.0'
+
+      - name: Install NPM dependencies
+        run: npm install
+        working-directory: api-votacion
+
+      - name: Build frontend assets
+        run: npm run build
+        working-directory: api-votacion
+
+      # Deploy a Azure Web App
       - name: Deploy to Azure Web App (API Votacion)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: api-votacion-backend
+          app-name: api-votacion
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           package: ./api-votacion
