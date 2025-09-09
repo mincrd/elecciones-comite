@@ -28,7 +28,7 @@ jobs:
         working-directory: admin-frontend
 
       - name: Archive build
-        run: zip -r build.zip dist
+        run: cd dist && zip -r ../admin.zip .
         working-directory: admin-frontend
 
       - name: Deploy to Azure Web App (Admin Frontend)
@@ -36,7 +36,7 @@ jobs:
         with:
           app-name: admin-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
-          package: ./admin-frontend/build.zip
+          package: ./admin-frontend/admin.zip
 
   # =====================
   # Votacion Frontend (Vue)
@@ -60,7 +60,7 @@ jobs:
         working-directory: votacion-frontend
 
       - name: Archive build
-        run: zip -r build.zip dist
+        run: cd dist && zip -r ../votacion.zip .
         working-directory: votacion-frontend
 
       - name: Deploy to Azure Web App (Votacion Frontend)
@@ -68,7 +68,7 @@ jobs:
         with:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
-          package: ./votacion-frontend/build.zip
+          package: ./votacion-frontend/votacion.zip
 
   # =====================
   # API Votacion (Laravel + Vite)
@@ -111,7 +111,7 @@ jobs:
           php artisan view:cache
         working-directory: api-votacion
 
-      # Empaquetar todo (incluye vendor, build, .env, etc.)
+      # Empaquetar todo (incluye vendor, build y .env)
       - name: Archive Laravel App
         run: zip -r api.zip . -x "node_modules/*" "tests/*"
         working-directory: api-votacion
@@ -123,3 +123,4 @@ jobs:
           app-name: api-votacion-backend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           package: ./api-votacion/api.zip
+
