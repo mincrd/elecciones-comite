@@ -3,12 +3,34 @@ name: Deploy to Azure App Services
 on:
   push:
     branches:
-      - main   
+      - main
 
 jobs:
-  # =====================
-  # Admin Frontend (Vue)
-  # =====================
+  # =======================================================
+  # Build and Push API Docker Image (api-votacion)
+  # Este job reemplaza el anterior. Ahora construye una imagen Docker.
+  # =======================================================
+  build-and-push-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build ./api-votacion -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }} -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion --all-tags
+
+  # =======================================================
+  # Admin Frontend (Vue) - Sin cambios
+  # =======================================================
   admin-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -38,9 +60,9 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
           package: ./admin-frontend/admin.zip
 
-  # =====================
-  # Votacion Frontend (Vue)
-  # =====================
+  # =======================================================
+  # Votacion Frontend (Vue) - Sin cambios
+  # =======================================================
   votacion-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -69,58 +91,3 @@ jobs:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
           package: ./votacion-frontend/votacion.zip
-
-  # =====================
-  # API Votacion (Laravel + Vite)
-  # =====================
-  api-votacion:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      # Instalar PHP + Composer
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, intl, pdo, mysql
-
-      - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader
-        working-directory: api-votacion
-
-      # Instalar Node + Vite
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.19.0'
-
-      - name: Install NPM dependencies
-        run: npm install
-        working-directory: api-votacion
-
-      - name: Build frontend assets
-        run: npm run build
-        working-directory: api-votacion
-
-      # Cache Laravel
-      - name: Cache Laravel
-        run: |
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-        working-directory: api-votacion
-
-      # Empaquetar todo (incluye vendor, build y .env)
-      - name: Archive Laravel App
-        run: zip -r api.zip . -x "node_modules/*" "tests/*"
-        working-directory: api-votacion
-
-      # Deploy a Azure Web App
-      - name: Deploy to Azure Web App (API Votacion)
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: api-votacion-backend
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
-          package: ./api-votacion/api.zip
-
