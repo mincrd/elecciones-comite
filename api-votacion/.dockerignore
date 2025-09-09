@@ -2,7 +2,7 @@
 .github
 node_modules
 tests
-docker
+
 docker-compose.yml
 .env
 storage/logs
