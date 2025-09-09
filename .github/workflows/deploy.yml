@@ -1,1 +1,79 @@
-deploy
+name: Deploy to Azure App Services
+
+on:
+  push:
+    branches:
+      - main   # cambia si usas otra rama para producción
+
+jobs:
+  # =====================
+  # Job 1: Admin Frontend
+  # =====================
+  admin-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: admin-frontend
+
+      - name: Build project
+        run: npm run build
+        working-directory: admin-frontend
+
+      - name: Deploy to Azure Web App (Admin Frontend)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: admin-frontend         # nombre exacto del App Service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
+          package: ./admin-frontend/dist
+
+  # =====================
+  # Job 2: Votacion Frontend
+  # =====================
+  votacion-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: votacion-frontend
+
+      - name: Build project
+        run: npm run build
+        working-directory: votacion-frontend
+
+      - name: Deploy to Azure Web App (Votacion Frontend)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: votacion-frontend      # nombre exacto del App Service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
+          package: ./votacion-frontend/dist
+
+  # =====================
+  # Job 3: API Votacion (Laravel / PHP)
+  # =====================
+  api-votacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Laravel no necesita build como Vue, solo desplegar
+      - name: Deploy to Azure Web App (API Votacion)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: api-votacion           # nombre exacto del App Service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+          package: ./api-votacion
