@@ -27,12 +27,16 @@ jobs:
         run: npm run build
         working-directory: admin-frontend
 
+      - name: Archive build
+        run: zip -r build.zip dist
+        working-directory: admin-frontend
+
       - name: Deploy to Azure Web App (Admin Frontend)
         uses: azure/webapps-deploy@v2
         with:
           app-name: admin-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
-          package: ./admin-frontend/dist
+          package: ./admin-frontend/build.zip
 
   # =====================
   # Votacion Frontend (Vue)
@@ -55,12 +59,16 @@ jobs:
         run: npm run build
         working-directory: votacion-frontend
 
+      - name: Archive build
+        run: zip -r build.zip dist
+        working-directory: votacion-frontend
+
       - name: Deploy to Azure Web App (Votacion Frontend)
         uses: azure/webapps-deploy@v2
         with:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
-          package: ./votacion-frontend/dist
+          package: ./votacion-frontend/build.zip
 
   # =====================
   # API Votacion (Laravel + Vite)
@@ -74,7 +82,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'   # o la que uses en Azure
+          php-version: '8.2'
           extensions: mbstring, bcmath, intl, pdo, mysql
 
       - name: Install Composer dependencies
@@ -95,12 +103,17 @@ jobs:
         run: npm run build
         working-directory: api-votacion
 
-      # Cache Laravel (opcional pero recomendado)
+      # Cache Laravel
       - name: Cache Laravel
         run: |
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
+        working-directory: api-votacion
+
+      # Empaquetar todo (incluye vendor, build, .env, etc.)
+      - name: Archive Laravel App
+        run: zip -r api.zip . -x "node_modules/*" "tests/*"
         working-directory: api-votacion
 
       # Deploy a Azure Web App
@@ -109,4 +122,4 @@ jobs:
         with:
           app-name: api-votacion-backend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
-          package: ./api-votacion
+          package: ./api-votacion/api.zip
