@@ -4,5 +4,5 @@ node_modules
 tests
 
 docker-compose.yml
-.env
+#.env
 storage/logs
