@@ -1,47 +1,50 @@
-# ---- 1. Dependencias de PHP (Composer) ----
-FROM composer:2 AS vendor
+# ---- 1. Etapa de Dependencias (Composer) ----
+FROM composer:2 as vendor
 WORKDIR /app
-COPY composer.json composer.lock ./
+
+# Copiamos todo el proyecto para que artisan exista al correr composer
+COPY . .
+
+# Instalamos dependencias PHP (sin dev, optimizado)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# ---- 2. Compilar assets (Node) ----
-FROM node:20 AS frontend
+# ---- 2. Etapa de Assets (NPM) ----
+FROM node:20 as frontend
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm install
 COPY . .
-RUN npm run build
+RUN npm install && npm run build
 
-# ---- 3. Imagen final (Nginx + PHP-FPM) ----
+# ---- 3. Etapa Final (Producción) ----
 FROM php:8.2-fpm-alpine
 
-# Dependencias del sistema
+# Instalamos dependencias del sistema: Nginx, Supervisor y extensiones PHP
 RUN apk add --no-cache \
     nginx \
     supervisor \
+    bash \
     icu-dev \
     libzip-dev \
     oniguruma-dev \
-    bash \
     && docker-php-ext-install pdo pdo_mysql bcmath intl zip
 
 WORKDIR /var/www/html
 
-# Copiar vendors y assets
+# Copiamos vendors y assets desde las etapas anteriores
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY --from=frontend /app/public /var/www/html/public
-COPY . .
 
-# Copiar configuración Nginx
+# Copiamos todo el resto del proyecto
+COPY . /var/www/html
+
+# Copiamos configuración de Nginx y Supervisor
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
-
-# Copiar configuración Supervisor
 COPY docker/supervisord.conf /etc/supervisord.conf
 
-# Permisos
+# Permisos correctos para Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache && \
     chmod -R 775 storage bootstrap/cache
 
 EXPOSE 80
 
+# Ejecutamos supervisor que mantiene PHP-FPM + Nginx
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
