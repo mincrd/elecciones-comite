@@ -37,7 +37,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
 
-   # =======================================================
+  # =======================================================
   # Admin Frontend (Vue)
   # =======================================================
   admin-frontend:
@@ -59,18 +59,18 @@ jobs:
         working-directory: admin-frontend
 
       - name: Archive build
-        run: cd dist && zip -r ../admin.zip .
-        working-directory: admin-frontend
+        run: zip -r admin.zip ./*
+        working-directory: admin-frontend/dist
 
       - name: Deploy to Azure Web App (Admin Frontend)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: admin-votacion-frontend   # 👈 Nombre exacto del App Service
+          app-name: admin-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
-          package: ./admin-frontend/admin.zip
+          package: ./admin-frontend/dist/admin.zip
 
 
-  # =======================================================
+   # =======================================================
   # Votacion Frontend (Vue)
   # =======================================================
   votacion-frontend:
@@ -92,13 +92,13 @@ jobs:
         working-directory: votacion-frontend
 
       - name: Archive build
-        run: cd dist && zip -r ../votacion.zip .
-        working-directory: votacion-frontend
+        run: zip -r votacion.zip ./*
+        working-directory: votacion-frontend/dist
 
       - name: Deploy to Azure Web App (Votacion Frontend)
         uses: azure/webapps-deploy@v2
         with:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
-          package: ./votacion-frontend/votacion.zip
+          package: ./votacion-frontend/dist/votacion.zip
 
