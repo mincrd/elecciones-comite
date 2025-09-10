@@ -37,7 +37,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
 
-  # =======================================================
+   # =======================================================
   # Admin Frontend (Vue)
   # =======================================================
   admin-frontend:
@@ -65,9 +65,10 @@ jobs:
       - name: Deploy to Azure Web App (Admin Frontend)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: admin-votacion-frontend
+          app-name: admin-votacion-frontend   # 👈 Nombre exacto del App Service
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
           package: ./admin-frontend/admin.zip
+
 
   # =======================================================
   # Votacion Frontend (Vue)
