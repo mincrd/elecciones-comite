@@ -42,6 +42,5 @@ RUN chown -R www-data:www-data storage bootstrap/cache && \
 
 EXPOSE 80
 
-# Sobrescribimos entrypoint/cmd del php-fpm-alpine
 ENTRYPOINT []
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
