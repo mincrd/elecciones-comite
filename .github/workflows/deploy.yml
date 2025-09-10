@@ -8,7 +8,6 @@ on:
 jobs:
   # =======================================================
   # Build and Push API Docker Image (api-votacion)
-  # Este job reemplaza el anterior. Ahora construye una imagen Docker.
   # =======================================================
   build-and-push-api:
     runs-on: ubuntu-latest
@@ -27,6 +26,15 @@ jobs:
         run: |
           docker build ./api-votacion -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }} -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion --all-tags
+
+      # 🚀 Nuevo paso: Actualizar App Service con la imagen nueva
+      - name: Deploy API to Azure Web App (Container)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: api-votacion-backend-container   # 👈 tu App Service para contenedor
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
+
 
   # =======================================================
   # Admin Frontend (Vue) - Sin cambios
