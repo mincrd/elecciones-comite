@@ -1,11 +1,7 @@
 # ---- 1. Etapa de Dependencias (Composer) ----
 FROM composer:2 as vendor
 WORKDIR /app
-
-# Copiamos todo el proyecto para que artisan exista al correr composer
 COPY . .
-
-# Instalamos dependencias PHP (sin dev, optimizado)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # ---- 2. Etapa de Assets (NPM) ----
@@ -17,7 +13,7 @@ RUN npm install && npm run build
 # ---- 3. Etapa Final (Producción) ----
 FROM php:8.2-fpm-alpine
 
-# Instalamos dependencias del sistema: Nginx, Supervisor y extensiones PHP
+# Instalar dependencias del sistema: Nginx, Supervisor y extensiones PHP
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -29,22 +25,23 @@ RUN apk add --no-cache \
 
 WORKDIR /var/www/html
 
-# Copiamos vendors y assets desde las etapas anteriores
+# Copiar vendor y assets ya construidos
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY --from=frontend /app/public /var/www/html/public
 
-# Copiamos todo el resto del proyecto
+# Copiar el resto del proyecto
 COPY . /var/www/html
 
-# Copiamos configuración de Nginx y Supervisor
+# Copiar configuraciones de Nginx y Supervisor
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 
-# Permisos correctos para Laravel
+# Permisos correctos
 RUN chown -R www-data:www-data storage bootstrap/cache && \
     chmod -R 775 storage bootstrap/cache
 
 EXPOSE 80
 
-# Ejecutamos supervisor que mantiene PHP-FPM + Nginx
+# Sobrescribimos entrypoint/cmd del php-fpm-alpine
+ENTRYPOINT []
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
