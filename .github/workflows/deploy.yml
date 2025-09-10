@@ -24,20 +24,21 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build ./api-votacion -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }} -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
+          docker build ./api-votacion \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion --all-tags
 
-      # 🚀 Nuevo paso: Actualizar App Service con la imagen nueva
+      # 🚀 Deploy al App Service (contenedor)
       - name: Deploy API to Azure Web App (Container)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: api-votacion-backend-container   # 👈 tu App Service para contenedor
+          app-name: api-votacion-backend-containe-behmakgzb5fzg5g2   # 👈 cambia esto por el nombre exacto de tu App Service (el del Publish Profile)
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
 
-
   # =======================================================
-  # Admin Frontend (Vue) - Sin cambios
+  # Admin Frontend (Vue)
   # =======================================================
   admin-frontend:
     runs-on: ubuntu-latest
@@ -69,7 +70,7 @@ jobs:
           package: ./admin-frontend/admin.zip
 
   # =======================================================
-  # Votacion Frontend (Vue) - Sin cambios
+  # Votacion Frontend (Vue)
   # =======================================================
   votacion-frontend:
     runs-on: ubuntu-latest
@@ -99,3 +100,4 @@ jobs:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
           package: ./votacion-frontend/votacion.zip
+
