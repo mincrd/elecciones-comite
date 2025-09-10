@@ -1,44 +1,46 @@
-# ---- 1. Etapa de Dependencias (Composer) ----
-FROM composer:2 as vendor
+# ---- 1. Dependencias de PHP (Composer) ----
+FROM composer:2 AS vendor
 WORKDIR /app
-COPY database/ database/
-COPY composer.json composer.json
-COPY composer.lock composer.lock
-RUN composer install --ignore-platform-reqs --no-interaction --no-plugins --no-scripts --prefer-dist
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# ---- 2. Etapa de Assets (NPM) ----
-FROM node:20 as frontend
+# ---- 2. Compilar assets (Node) ----
+FROM node:20 AS frontend
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm install
 COPY . .
-RUN npm install && npm run build
+RUN npm run build
 
-# ---- 3. Etapa Final (Producción) ----
+# ---- 3. Imagen final (Nginx + PHP-FPM) ----
 FROM php:8.2-fpm-alpine
 
+# Dependencias del sistema
 RUN apk add --no-cache \
     nginx \
     supervisor \
-    bash \
     icu-dev \
     libzip-dev \
     oniguruma-dev \
-    && docker-php-ext-install pdo pdo_mysql bcmath
+    bash \
+    && docker-php-ext-install pdo pdo_mysql bcmath intl zip
 
 WORKDIR /var/www/html
 
-COPY --from=vendor /app/vendor/ /var/www/html/vendor/
-COPY --from=frontend /app/public/ /var/www/html/public/
-COPY . /var/www/html/
+# Copiar vendors y assets
+COPY --from=vendor /app/vendor /var/www/html/vendor
+COPY --from=frontend /app/public /var/www/html/public
+COPY . .
 
-# Nginx conf
+# Copiar configuración Nginx
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 
-# Supervisor conf
+# Copiar configuración Supervisor
 COPY docker/supervisord.conf /etc/supervisord.conf
 
+# Permisos
 RUN chown -R www-data:www-data storage bootstrap/cache && \
     chmod -R 775 storage bootstrap/cache
-
 
 EXPOSE 80
 
