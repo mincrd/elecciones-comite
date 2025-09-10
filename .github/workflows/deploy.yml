@@ -33,7 +33,7 @@ jobs:
       - name: Deploy API to Azure Web App (Container)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: api-votacion-backend-containe   # 👈 cambia esto por el nombre exacto de tu App Service (el del Publish Profile)
+          app-name: api-votacion-backend   # 👈 corregido
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
 
