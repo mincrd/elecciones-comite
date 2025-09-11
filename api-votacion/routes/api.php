@@ -33,15 +33,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 Route::prefix('votacion')->name('votacion.')->group(function () {
-    // NUEVA RUTA para obtener el estado del votante (pública)
+
+    // --- Rutas Públicas ---
+    // No requieren token de autenticación.
+
+    // Paso 1: Obtiene el estado de un votante (si es hábil, si ya votó, etc.)
     Route::get('estado-votante/{cedula}', [VotacionController::class, 'getEstadoVotante']);
 
-    // Ruta para iniciar la sesión de votación (pública)
+    // Paso 2: Inicia la sesión de votación y genera el token JWT
     Route::post('registrar-sesion', [VotacionController::class, 'registrarSesionParaVotar']);
 
-    // Rutas que requieren el token (protegidas)
+
+    // --- Rutas Protegidas ---
+    // Requieren un token JWT válido para acceder.
     Route::middleware('auth:api')->group(function () {
+
+        // Paso 3: Obtiene la lista de candidatos para el grupo del votante
         Route::get('candidatos', [VotacionController::class, 'getCandidatosPorGrupo']);
-         Route::post('votar', [VotacionController::class, 'registrarVoto']);
+
+        // Paso 4: Registra el voto final del usuario
+        Route::post('votar', [VotacionController::class, 'registrarVoto']);
     });
 });
