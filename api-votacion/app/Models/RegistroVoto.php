@@ -3,42 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Tymon\JWTAuth\Contracts\JWTSubject; // <-- ¡Importante!
+use Illuminate\Foundation\Auth\User as Authenticatable; // Asegúrate que extiende de Authenticatable
+use Tymon\JWTAuth\Contracts\JWTSubject; // Importa el contrato de JWT
 
-// El modelo de votante ahora es compatible con JWT
-class RegistroVoto extends Model implements JWTSubject
+class RegistroVoto extends Authenticatable implements JWTSubject // Implementa el contrato
 {
     use HasFactory;
 
+    /**
+     * Los atributos que se pueden asignar masivamente.
+     *
+     * @var array<int, string>
+     */
+    // AÑADE ESTO:
     protected $fillable = [
-        'email',
-        'no_empleado',
+        'cedula',
         'grupo_ocupacional',
+        'postulante_id' // Y uno para el ID del postulante
     ];
 
-    public function voto()
-    {
-        return $this->hasOne(Voto::class);
-    }
+    // ... el resto de tu modelo
 
-    // --- MÉTODOS REQUERIDOS POR JWTSubject ---
-
-    /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
-     *
-     * @return mixed
-     */
+    // IMPORTANTE: Para que la autenticación con JWT funcione, necesitas estos dos métodos
     public function getJWTIdentifier()
     {
         return $this->getKey();
     }
 
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     *
-     * @return array
-     */
     public function getJWTCustomClaims()
     {
         return [];

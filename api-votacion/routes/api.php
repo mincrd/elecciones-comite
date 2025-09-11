@@ -31,15 +31,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('resultados/{proceso}', [ResultadoController::class, 'obtenerResultados'])->name('resultados');
 });
 
-// Rutas para la Plataforma de Votación Pública
-Route::prefix('votacion')->name('votacion.')->group(function () {
-    // Endpoint para que el votante se identifique y obtenga un token
-    Route::post('identificar', [VotacionController::class, 'identificarVotante']);
 
-    // Endpoints protegidos por el guard 'api' (que ahora usa JWT).
-    // Requieren un token JWT válido en la cabecera 'Authorization'.
+Route::prefix('votacion')->name('votacion.')->group(function () {
+    // NUEVA RUTA para obtener el estado del votante (pública)
+    Route::get('estado-votante/{cedula}', [VotacionController::class, 'getEstadoVotante']);
+
+    // Ruta para iniciar la sesión de votación (pública)
+    Route::post('registrar-sesion', [VotacionController::class, 'registrarSesionParaVotar']);
+
+    // Rutas que requieren el token (protegidas)
     Route::middleware('auth:api')->group(function () {
         Route::get('candidatos', [VotacionController::class, 'getCandidatosPorGrupo']);
-        Route::post('votar', [VotacionController::class, 'registrarVoto']);
+         Route::post('votar', [VotacionController::class, 'registrarVoto']);
     });
 });

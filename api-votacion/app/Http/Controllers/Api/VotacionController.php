@@ -13,59 +13,83 @@ use Tymon\JWTAuth\Facades\JWTAuth; // Opcional, pero bueno tenerlo
 
 class VotacionController extends Controller
 {
+
+    // app/Http/Controllers/VotacionController.php
+
     /**
-     * Identifica a un votante, lo registra si es necesario y le devuelve un token JWT.
+     * Obtiene el estado completo de un votante por su cédula.
      */
-    public function identificarVotante(Request $request)
+    public function getEstadoVotante($cedula)
     {
-        // 1. Validar que la cédula venga en la petición
-        $validator = Validator::make($request->all(), [
-            'cedula' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
+        // 1. Validar que exista un proceso de votación activo
+        $procesoActivo = Proceso::where('estado', 'Abierto')->first();
+        if (!$procesoActivo) {
+            return response()->json(['message' => 'No hay un proceso de votación activo en este momento.'], 403);
         }
 
-        $cedula = $request->cedula;
-
-        // 2. Verificar si esta cédula ya fue registrada para votar
-        // Esta es la comprobación más importante para evitar re-emisión de tokens.
-        if (RegistroVoto::where('cedula', $cedula)->exists()) {
-            return response()->json(['message' => 'Esta cédula ya fue utilizada en este proceso de votación.'], 403);
+        // 2. Validar que la cédula no esté vacía
+        if (empty($cedula)) {
+            return response()->json(['message' => 'La cédula es requerida.'], 400);
         }
 
-        // 3. Verificar si el empleado está en la lista de votantes hábiles
+        // 3. Buscar si el empleado está en la lista de votantes hábiles
         $empleadoHabil = EmpleadoHabil::where('cedula', $cedula)->first();
-
         if (!$empleadoHabil) {
             return response()->json(['message' => 'La cédula proporcionada no corresponde a un votante hábil.'], 404);
         }
 
-        // 4. Si es hábil y no ha sido registrado, se crea su registro de voto
-        // Este registro marcará que ya inició el proceso.
+        // 4. ✅ AJUSTE: Hacemos una consulta directa y más clara para saber si ya votó.
+        // Esto responde directamente a tu pregunta 1.
+        // Buscamos un registro donde la cédula coincida Y el voto ya haya sido emitido (voto_emitido = true).
+        // 4. ✅ AJUSTE: Ahora 'yaVoto' es true si simplemente existe un registro con esa cédula.
+        $votoYaEmitido = RegistroVoto::where('cedula', $cedula)->exists();
+
+        // 5. Devolver toda la información relevante
+        return response()->json([
+            'esHabil' => true, // Indica que la persona está en el padrón electoral.
+            'yaVoto' => $votoYaEmitido, // Indica si su voto ya fue finalizado.
+            'nombre' => $empleadoHabil->nombre_completo,
+            'grupo_ocupacional' => $empleadoHabil->grupo_ocupacional,
+            'cargo' => $empleadoHabil->cargo,
+            'lugar_trabajo' => $empleadoHabil->lugar_de_funciones,
+        ]);
+    }
+
+    /**
+     * PASO 2: Crea el registro y genera el token para iniciar la sesión de votación.
+     * (Este método se mantiene igual que en la respuesta anterior).
+     */
+    public function registrarSesionParaVotar(Request $request)
+    {
+        $validator = Validator::make($request->all(), ['cedula' => 'required|string']);
+        if ($validator->fails()) { return response()->json($validator->errors(), 400); }
+
+        $cedula = $request->cedula;
+
+        $empleadoHabil = EmpleadoHabil::where('cedula', $cedula)->first();
+        if (!$empleadoHabil || RegistroVoto::where('cedula', $cedula)->exists()) {
+            return response()->json(['message' => 'Acceso no autorizado o cédula ya registrada.'], 403);
+        }
+
         $votante = RegistroVoto::create([
             'cedula' => $empleadoHabil->cedula,
-            'grupo_ocupacional' => $empleadoHabil->grupo_ocupacional
+            'grupo_ocupacional' => $empleadoHabil->grupo_ocupacional,
+            'voto_emitido' => false // Se inicia la sesión, pero aún no ha votado
         ]);
 
-        // 5. Generar el token JWT para el registro recién creado
         if (!$token = auth('api')->fromUser($votante)) {
             return response()->json(['error' => 'No se pudo crear el token'], 500);
         }
 
-        // 6. Devolver el token para que pueda continuar a los siguientes pasos
         return response()->json(['token' => $token]);
     }
 
     /**
-     * Obtiene los candidatos del grupo ocupacional del votante autenticado.
+     * Paso 3: Obtiene los candidatos (este método se mantiene igual).
      */
     public function getCandidatosPorGrupo(Request $request)
     {
-        // auth('api')->user() obtiene el modelo RegistroVoto a partir del token
         $votante = auth('api')->user();
-
         $procesoActivo = Proceso::where('estado', 'Abierto')->first();
         if (!$procesoActivo) {
             return response()->json(['message' => 'No hay un proceso de votación activo en este momento.'], 404);
@@ -77,6 +101,11 @@ class VotacionController extends Controller
 
         return response()->json($candidatos);
     }
+
+
+    /**
+     * Obtiene los candidatos del grupo ocupacional del votante autenticado.
+     */
 
     /**
      * Registra el voto del usuario.
