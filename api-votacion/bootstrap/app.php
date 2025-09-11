@@ -14,19 +14,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // 🔹 JWT Middleware (se aplica globalmente si quieres)
-        $middleware->append([
-            JWTAuthenticate::class,
-            JWTRefresh::class,
-        ]);
+
 
         // 👇 Si prefieres aplicarlo solo en API:
-        /*
-        $middleware->group('api', [
-            JWTAuthenticate::class,
-            JWTRefresh::class,
-        ]);
-        */
+//
+//        $middleware->group('api', [
+//            JWTAuthenticate::class,
+//            JWTRefresh::class,
+//        ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

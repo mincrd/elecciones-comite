@@ -26,7 +26,7 @@ return [
         ],
         'api' => [
             'driver' => 'jwt',
-            'provider' => 'votantes', // Correcto: Usa el provider 'votantes'
+            'provider' => 'users', // Correcto: Usa el provider 'votantes'
             'hash' => false,
         ],
     ],
@@ -43,11 +43,7 @@ return [
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        // ✅ AÑADIDO: Aquí está la definición que faltaba
-        'votantes' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\RegistroVoto::class,
-        ],
+
     ],
 
     /*

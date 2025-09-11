@@ -2,15 +2,15 @@
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVotacionStore } from '@/stores/votacionStore';
+import { useToast } from 'primevue/usetoast';
 
-// Componentes y Servicios de PrimeVue
-import Button from 'primevue/button';
+// Componentes de PrimeVue
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
+import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
-import Toast from 'primevue/toast';
 import Chip from 'primevue/chip';
-import { useToast } from 'primevue/usetoast';
+import Toast from 'primevue/toast';
 
 const toast = useToast();
 const votacionStore = useVotacionStore();
@@ -19,6 +19,7 @@ const { currentStep, isLoading, candidatos, votanteInfo } = storeToRefs(votacion
 const identificacionForm = ref({ cedula: '' });
 const selectedCandidato = ref(null);
 
+// ✅ LÓGICA RESTAURADA
 const submitVerificacion = async () => {
     if (!identificacionForm.value.cedula.trim()) {
         toast.add({ severity: 'warn', summary: 'Atención', detail: 'Debe ingresar su número de cédula.', life: 3000 });
@@ -32,33 +33,37 @@ const submitVerificacion = async () => {
 };
 
 const handleIniciarVotacion = async () => {
-    if (!votanteInfo.value?.esHabil || votanteInfo.value?.yaVoto) return;
+    if (!votanteInfo.value) return;
     try {
-        await votacionStore.iniciarSesionDeVoto(identificacionForm.value.cedula);
+        await votacionStore.fetchCandidatos(votanteInfo.value.grupo_ocupacional);
     } catch (error) {
-         toast.add({ severity: 'error', summary: 'Error al Iniciar', detail: error.message, life: 4000 });
+         toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 4000 });
     }
 }
 
 const submitVoto = async () => {
-    if (!selectedCandidato.value) {
-        toast.add({ severity: 'warn', summary: 'Atención', detail: 'Debe seleccionar un candidato para votar.', life: 3000 });
+    if (!selectedCandidato.value || !votanteInfo.value) {
+        toast.add({ severity: 'warn', summary: 'Atención', detail: 'Debe seleccionar un candidato.', life: 3000 });
         return;
     }
     try {
-        await votacionStore.handleVoto(selectedCandidato.value);
+        // Corregido para enviar la cédula correcta
+        await votacionStore.handleVoto({
+            cedula: identificacionForm.value.cedula,
+            postulanteId: selectedCandidato.value
+        });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Error al Votar', detail: error.message, life: 4000 });
     }
 };
 
+// ✅ LÓGICA RESTAURADA
 const reiniciarProceso = () => {
     votacionStore.resetStore();
     identificacionForm.value = { cedula: '' };
     selectedCandidato.value = null;
 };
 </script>
-
 <template>
     <Toast position="top-center" />
     <div class="votacion-container">

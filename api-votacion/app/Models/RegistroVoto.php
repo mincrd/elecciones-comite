@@ -3,35 +3,38 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable; // Asegúrate que extiende de Authenticatable
-use Tymon\JWTAuth\Contracts\JWTSubject; // Importa el contrato de JWT
+use Illuminate\Database\Eloquent\Model;
 
-class RegistroVoto extends Authenticatable implements JWTSubject // Implementa el contrato
+class RegistroVoto extends Model
 {
     use HasFactory;
 
-    /**
-     * Los atributos que se pueden asignar masivamente.
-     *
-     * @var array<int, string>
-     */
-    // AÑADE ESTO:
+    // Si tu tabla se llama 'registro_votos' (plural por convención), puedes omitir $table.
+    // Si se llama distinto, descomenta y ajusta:
+    // protected $table = 'registro_votos';
+
+    // Si usaras otro schema/base de datos explícito:
+    // protected $table = 'elecciones_comite_db.registro_votos';
+
     protected $fillable = [
         'cedula',
         'grupo_ocupacional',
-        'postulante_id' // Y uno para el ID del postulante
+        'postulante_id',
+        // agrega otros campos si existen (p.ej. 'proceso_id', 'ip', etc.)
     ];
 
-    // ... el resto de tu modelo
+    // Casts recomendados
+    protected $casts = [
+        'cedula' => 'string',
+        'grupo_ocupacional' => 'string',
+        'postulante_id' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
-    // IMPORTANTE: Para que la autenticación con JWT funcione, necesitas estos dos métodos
-    public function getJWTIdentifier()
+    // Relaciones
+    public function postulante()
     {
-        return $this->getKey();
-    }
-
-    public function getJWTCustomClaims()
-    {
-        return [];
+        return $this->belongsTo(Postulante::class, 'postulante_id');
     }
 }
