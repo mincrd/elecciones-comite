@@ -3,6 +3,9 @@ import { createPinia } from 'pinia'
 import App from './App.vue';
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
+import './style.css';
+
+
 
 // Importación del nuevo sistema de temas y estilos base
 import Lara from '@primevue/themes/lara';

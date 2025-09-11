@@ -76,39 +76,71 @@ const reiniciarProceso = () => {
                     </header>
 
                     <transition name="fade" mode="out-in">
-                        <div v-if="currentStep === 1" key="step1">
-                            <p class="text-center text-gray-600 mb-8">Para participar, ingrese su cédula de identidad.</p>
-                            <div class="px-4 sm:px-8">
-                                <div class="p-inputgroup mt-2">
-                                    <span class="p-inputgroup-addon"><i class="pi pi-id-card"></i></span>
-                                    <InputText id="cedula" v-model="identificacionForm.cedula" placeholder="Ingrese su cédula sin guiones" @keyup.enter="submitVerificacion" />
-                                </div>
-                            </div>
-                            <div class="mt-8 px-4 sm:px-8">
-                                <Button label="Verificar Identidad" icon="pi pi-user-check" iconPos="right" class="w-full" @click="submitVerificacion" :loading="isLoading" />
-                            </div>
-                        </div>
+                        <div v-if="currentStep === 1" key="step1" class="step-box">
+  <p class="text-center">Para participar, ingrese su cédula de identidad.</p>
+
+  <div class="input-wrapper">
+    <div class="p-inputgroup">
+      <span class="p-inputgroup-addon"><i class="pi pi-id-card"></i></span>
+      <InputText
+        id="cedula"
+        v-model="identificacionForm.cedula"
+        placeholder="Ingrese su cédula sin guiones"
+        @keyup.enter="submitVerificacion"
+      />
+    </div>
+  </div>
+
+  <div class="button-wrapper">
+    <Button
+      label="Verificar Identidad"
+      icon="pi pi-user-check"
+      iconPos="right"
+      class="btn-full"
+      @click="submitVerificacion"
+      :loading="isLoading"
+    />
+  </div>
+</div>
+
 
                         <div v-else-if="currentStep === 2" key="step2" class="text-center">
                             <div v-if="votanteInfo">
-                                <i class="pi pi-user text-6xl text-primary"></i>
+                                <i class="pi pi-user text-4xl text-primary"></i>
                                 <h2 class="text-2xl font-bold mt-4">¡Bienvenido(a), {{ votanteInfo.nombre }}!</h2>
                                 
                                 <div class="votante-info-box">
                                     <p v-if="votanteInfo.cargo">
                                         <i class="pi pi-briefcase" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Cargo:</strong> {{ votanteInfo.cargo }}
+                                        <strong>Cargo: </strong> {{ votanteInfo.cargo }}
                                     </p>
                                     <p v-if="votanteInfo.lugar_trabajo">
                                         <i class="pi pi-building" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Ubicación:</strong> {{ votanteInfo.lugar_trabajo }}
+                                        <strong>Ubicación: </strong> {{ votanteInfo.lugar_trabajo }}
                                     </p>
                                 </div>
                                 
                                 <div v-if="votanteInfo.yaVoto" class="mt-4">
-                                    <Chip label="Voto ya registrado" icon="pi pi-check-circle" class="bg-green-100 text-green-800" />
-                                    <p class="text-gray-600 mt-4">Usted ya ha participado en este proceso de votación. Gracias por su contribución.</p>
-                                    <Button label="Finalizar" icon="pi pi-home" class="mt-6 p-button-secondary" @click="reiniciarProceso" />
+                                <!-- Chip -->
+                                <Chip 
+                                    label="Voto ya registrado" 
+                                    icon="pi pi-check-circle"
+                                    class="custom-chip-success"
+                                />
+
+                                <!-- Texto -->
+                                <p class="text-gray-600 mt-4">
+                                    Usted ya ha participado en este proceso de votación. 
+                                    Gracias por su contribución.
+                                </p>
+
+                                <!-- Botón -->
+                                <Button 
+                                    label="Finalizar" 
+                                    icon="pi pi-home" 
+                                    class="mt-6 p-button-secondary custom-btn-finalizar"
+                                    @click="reiniciarProceso" 
+                                />
                                 </div>
 
                                 <div v-else class="mt-4">
@@ -238,4 +270,26 @@ const reiniciarProceso = () => {
 .fade-enter-from, .fade-leave-to {
     opacity: 0;
 }
+
+/* Espacio entre ícono y input */
+.p-inputgroup .p-inputgroup-addon {
+  margin-right: 8px; /* separa el icono del input */
+}
+
+/* Wrapper del input */
+.input-wrapper {
+  margin: 1rem 0; /* separa del texto superior */
+}
+
+/* Wrapper del botón */
+.button-wrapper {
+  margin-top: 1.5rem; /* separa el botón del input */
+}
+
+/* Botón ocupa todo el ancho */
+.btn-full {
+  width: 100%;
+}
+
+
 </style>
