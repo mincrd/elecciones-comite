@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmpleadoHabil;
 use App\Models\Proceso;
 use App\Models\RegistroVoto;
 use App\Models\Voto;
@@ -17,33 +18,43 @@ class VotacionController extends Controller
      */
     public function identificarVotante(Request $request)
     {
+        // 1. Validar que la cédula venga en la petición
         $validator = Validator::make($request->all(), [
-            'email' => 'required_without:no_empleado|nullable|email',
-            'no_empleado' => 'required_without:email|nullable|string',
-            'grupo_ocupacional' => 'required|in:I,II,III,IV,V',
+            'cedula' => 'required|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
 
-        $credentials = $request->only('email', 'no_empleado');
-        // Eliminar claves nulas para que la búsqueda funcione con email O no_empleado
-        $credentials = array_filter($credentials, fn($value) => !is_null($value));
+        $cedula = $request->cedula;
 
-        $votante = RegistroVoto::firstOrCreate($credentials, [
-            'email' => $request->email,
-            'no_empleado' => $request->no_empleado,
-            'grupo_ocupacional' => $request->grupo_ocupacional
+        // 2. Verificar si esta cédula ya fue registrada para votar
+        // Esta es la comprobación más importante para evitar re-emisión de tokens.
+        if (RegistroVoto::where('cedula', $cedula)->exists()) {
+            return response()->json(['message' => 'Esta cédula ya fue utilizada en este proceso de votación.'], 403);
+        }
+
+        // 3. Verificar si el empleado está en la lista de votantes hábiles
+        $empleadoHabil = EmpleadoHabil::where('cedula', $cedula)->first();
+
+        if (!$empleadoHabil) {
+            return response()->json(['message' => 'La cédula proporcionada no corresponde a un votante hábil.'], 404);
+        }
+
+        // 4. Si es hábil y no ha sido registrado, se crea su registro de voto
+        // Este registro marcará que ya inició el proceso.
+        $votante = RegistroVoto::create([
+            'cedula' => $empleadoHabil->cedula,
+            'grupo_ocupacional' => $empleadoHabil->grupo_ocupacional
         ]);
 
-        // --- LA CORRECCIÓN ESTÁ AQUÍ ---
-        // Generamos un token para este 'votante' usando el guard de la API (JWT)
-        // En lugar de: $votante->createToken('auth_token')->plainTextToken;
+        // 5. Generar el token JWT para el registro recién creado
         if (!$token = auth('api')->fromUser($votante)) {
             return response()->json(['error' => 'No se pudo crear el token'], 500);
         }
 
+        // 6. Devolver el token para que pueda continuar a los siguientes pasos
         return response()->json(['token' => $token]);
     }
 

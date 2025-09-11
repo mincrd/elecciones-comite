@@ -15,7 +15,7 @@ import { useToast } from 'primevue/usetoast';
 
 // --- CONFIGURACIÓN ---
 const toast = useToast();
-const apiUrl = 'http://127.0.0.1:8000/api/votacion';
+const apiUrl = 'https://api-votacion-backend.azurewebsites.net/api/votacion';
 
 // --- ESTADO DE LA APLICACIÓN ---
 const currentStep = ref(1); // 1: Identificación, 2: Votación, 3: Agradecimiento
