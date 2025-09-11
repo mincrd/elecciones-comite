@@ -15,6 +15,10 @@ jobs:
   # =======================================================
   build-and-push-api:
     runs-on: ubuntu-latest
+    env:
+      # Mapeo de secretos a env para poder usarlos en if:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -41,31 +45,30 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }}
 
-      # (Opcional) Reiniciar el Web App para forzar repull y mostrar config
-      # Requiere un Service Principal con permisos (AZURE_CREDENTIALS en formato JSON).
+      # (Opcional) Login + restart + mostrar config
       - name: Azure Login (optional)
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: env.AZURE_CREDENTIALS != ''
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Restart Web App (optional)
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: env.AZURE_CREDENTIALS != ''
         uses: azure/cli@v2
         with:
           inlineScript: |
             az webapp restart \
               --name api-votacion-backend \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
 
       - name: Show container config (optional)
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: env.AZURE_CREDENTIALS != ''
         uses: azure/cli@v2
         with:
           inlineScript: |
             az webapp config container show \
               --name api-votacion-backend \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
 
   # =======================================================
   # Admin Frontend (Vue)
