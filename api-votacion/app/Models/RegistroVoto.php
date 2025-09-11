@@ -4,43 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Tymon\JWTAuth\Contracts\JWTSubject; // <-- ¡Importante!
 
-// El modelo de votante ahora es compatible con JWT
-class RegistroVoto extends Model implements JWTSubject
+class RegistroVoto extends Model
 {
     use HasFactory;
 
+    // Si tu tabla se llama 'registro_votos' (plural por convención), puedes omitir $table.
+    // Si se llama distinto, descomenta y ajusta:
+    // protected $table = 'registro_votos';
+
+    // Si usaras otro schema/base de datos explícito:
+    // protected $table = 'elecciones_comite_db.registro_votos';
+
     protected $fillable = [
-        'email',
-        'no_empleado',
+        'cedula',
         'grupo_ocupacional',
+        'postulante_id',
+        // agrega otros campos si existen (p.ej. 'proceso_id', 'ip', etc.)
     ];
 
-    public function voto()
-    {
-        return $this->hasOne(Voto::class);
-    }
+    // Casts recomendados
+    protected $casts = [
+        'cedula' => 'string',
+        'grupo_ocupacional' => 'string',
+        'postulante_id' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
-    // --- MÉTODOS REQUERIDOS POR JWTSubject ---
-
-    /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
-     *
-     * @return mixed
-     */
-    public function getJWTIdentifier()
+    // Relaciones
+    public function postulante()
     {
-        return $this->getKey();
-    }
-
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     *
-     * @return array
-     */
-    public function getJWTCustomClaims()
-    {
-        return [];
+        return $this->belongsTo(Postulante::class, 'postulante_id');
     }
 }

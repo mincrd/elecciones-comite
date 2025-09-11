@@ -5,12 +5,20 @@ on:
     branches:
       - main
 
+concurrency:
+  group: azure-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # =======================================================
   # Build and Push API Docker Image (api-votacion)
   # =======================================================
   build-and-push-api:
     runs-on: ubuntu-latest
+    env:
+      # Mapeo de secretos a env para poder usarlos en if:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -29,13 +37,38 @@ jobs:
             -t ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion --all-tags
 
-      # 🚀 Deploy al App Service (contenedor)
+      # 🚀 Deploy al App Service (contenedor) usando el SHA (NO latest)
       - name: Deploy API to Azure Web App (Container)
         uses: azure/webapps-deploy@v2
         with:
-          app-name: api-votacion-backend   # 👈 corregido
+          app-name: api-votacion-backend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
-          images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:latest
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/api-votacion:${{ github.sha }}
+
+      # (Opcional) Login + restart + mostrar config
+      - name: Azure Login (optional)
+        if: env.AZURE_CREDENTIALS != ''
+        uses: azure/login@v1
+        with:
+          creds: ${{ env.AZURE_CREDENTIALS }}
+
+      - name: Restart Web App (optional)
+        if: env.AZURE_CREDENTIALS != ''
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp restart \
+              --name api-votacion-backend \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+
+      - name: Show container config (optional)
+        if: env.AZURE_CREDENTIALS != ''
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp config container show \
+              --name api-votacion-backend \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
 
   # =======================================================
   # Admin Frontend (Vue)
@@ -49,18 +82,20 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.19.0'
+          cache: 'npm'
+          cache-dependency-path: admin-frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
         working-directory: admin-frontend
+        run: npm ci
 
       - name: Build project
-        run: npm run build
         working-directory: admin-frontend
+        run: npm run build
 
       - name: Archive build
-        run: zip -r admin.zip ./*
         working-directory: admin-frontend/dist
+        run: zip -r admin.zip ./*
 
       - name: Deploy to Azure Web App (Admin Frontend)
         uses: azure/webapps-deploy@v2
@@ -69,8 +104,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_ADMIN }}
           package: ./admin-frontend/dist/admin.zip
 
-
-   # =======================================================
+  # =======================================================
   # Votacion Frontend (Vue)
   # =======================================================
   votacion-frontend:
@@ -82,18 +116,20 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.19.0'
+          cache: 'npm'
+          cache-dependency-path: votacion-frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
         working-directory: votacion-frontend
+        run: npm ci
 
       - name: Build project
-        run: npm run build
         working-directory: votacion-frontend
+        run: npm run build
 
       - name: Archive build
-        run: zip -r votacion.zip ./*
         working-directory: votacion-frontend/dist
+        run: zip -r votacion.zip ./*
 
       - name: Deploy to Azure Web App (Votacion Frontend)
         uses: azure/webapps-deploy@v2
@@ -101,4 +137,3 @@ jobs:
           app-name: portal-votacion-frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_VOTACION }}
           package: ./votacion-frontend/dist/votacion.zip
-

@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\Admin\PostulanteController;
 use App\Http\Controllers\Api\VotacionController;
 use App\Http\Controllers\Api\ResultadoController;
 use App\Http\Controllers\AuthController;
-
+use Tymon\JWTAuth\Http\Middleware\Authenticate as JwtAuthenticate;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -31,15 +31,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('resultados/{proceso}', [ResultadoController::class, 'obtenerResultados'])->name('resultados');
 });
 
-// Rutas para la Plataforma de Votación Pública
-Route::prefix('votacion')->name('votacion.')->group(function () {
-    // Endpoint para que el votante se identifique y obtenga un token
-    Route::post('identificar', [VotacionController::class, 'identificarVotante']);
 
-    // Endpoints protegidos por el guard 'api' (que ahora usa JWT).
-    // Requieren un token JWT válido en la cabecera 'Authorization'.
-    Route::middleware('auth:api')->group(function () {
-        Route::get('candidatos', [VotacionController::class, 'getCandidatosPorGrupo']);
-        Route::post('votar', [VotacionController::class, 'registrarVoto']);
-    });
+Route::prefix('votacion')->group(function () {
+    Route::get('estado-votante/{cedula}', [VotacionController::class, 'getEstadoVotante'])
+        ->withoutMiddleware([JwtAuthenticate::class, 'jwt.auth', 'auth:api']);
+
+    Route::get('candidatos/{grupo}', [VotacionController::class, 'getCandidatosPorGrupo'])
+        ->withoutMiddleware([JwtAuthenticate::class, 'jwt.auth', 'auth:api']);
+
+    Route::post('votar', [VotacionController::class, 'registrarVoto'])
+        ->withoutMiddleware([JwtAuthenticate::class, 'jwt.auth', 'auth:api']);
 });

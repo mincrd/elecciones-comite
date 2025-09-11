@@ -1,18 +1,15 @@
 <?php
 
+
 namespace App\Models;
+
 
 use Illuminate\Database\Eloquent\Model;
-
-// app/Models/EmpleadoHabil.php
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 class EmpleadoHabil extends Model
 {
-    use HasFactory;
+    protected $table = 'empleados_habiles';
 
     protected $fillable = [
         'nombre_completo',
