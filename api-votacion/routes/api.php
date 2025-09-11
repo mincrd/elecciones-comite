@@ -6,12 +6,23 @@ use App\Http\Controllers\Api\Admin\ProcesoController;
 use App\Http\Controllers\Api\Admin\PostulanteController;
 use App\Http\Controllers\Api\VotacionController;
 use App\Http\Controllers\Api\ResultadoController;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
+
+// rutas para el login
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware(['jwt.auth'])->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
+});
 
 // Rutas para el Panel de Administración
 Route::prefix('admin')->name('admin.')->group(function () {

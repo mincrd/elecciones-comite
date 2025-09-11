@@ -78,13 +78,6 @@ const menuItems = ref([
         icon: 'pi-chart-line',
         description: 'Vista general del sistema'
     },
-
-    {
-        id: 'usuarios',
-        label: 'Administración de Usuarios',
-        icon: 'pi-users',
-        description: 'Gestión de usuarios del sistema'
-    },
 ]);
 
 // --- LÓGICA DE API ---
@@ -122,7 +115,9 @@ const saveProceso = async () => {
 };
 
 const fetchDetallesProceso = async (procesoId) => {
-    isLoading.value.detalles = true;
+    if (postulantes.value.length <1 && resultados.value.length <1) { //esto es para que no muestre el loading pero si se siga haciendo la recarga
+        isLoading.value.detalles = true;
+    }
     try {
         console.log("procesoId:", procesoId);
         const [postulantesRes, resultadosRes] = await Promise.all([
@@ -245,9 +240,6 @@ onMounted(fetchProcesos);
 
 <template>
     <div class="flex min-h-screen bg-gray-50">
-        <Toast position="top-center" />
-        <ConfirmDialog />
-        
         <!-- Sidebar -->
         <div class="fixed inset-y-0 left-0 z-50 w-80 bg-slate-900 shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0"
              :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }">
@@ -299,6 +291,9 @@ onMounted(fetchProcesos);
                 </div>
             </div>
         </div>
+        <Toast position="top-center" />
+        <ConfirmDialog />
+        
 
         <!-- Overlay para móvil -->
         <div v-if="sidebarOpen" @click="sidebarOpen = false" 
@@ -580,44 +575,6 @@ onMounted(fetchProcesos);
                             </div>
                         </template>
                     </Card> -->
-                </div>
-
-                <!-- Sección de Usuarios -->
-                <div v-else-if="activeSection === 'usuarios'" class="space-y-6">
-                    <Card class="bg-white shadow-sm border-0">
-                        <template #title>
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-gray-900">Administración de Usuarios</h3>
-                                <Button icon="pi pi-user-plus" label="Nuevo Usuario" class="p-button-primary" />
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="text-center py-12">
-                                <i class="pi pi-users text-6xl text-gray-200 mb-4"></i>
-                                <h4 class="text-lg font-semibold text-gray-900 mb-2">Gestión de Usuarios</h4>
-                                <p class="text-gray-600">Administra usuarios, roles y permisos del sistema</p>
-                            </div>
-                        </template>
-                    </Card>
-                </div>
-
-                <!-- Sección de Votantes -->
-                <div v-else-if="activeSection === 'votantes'" class="space-y-6">
-                    <Card class="bg-white shadow-sm border-0">
-                        <template #title>
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-gray-900">Votantes Registrados</h3>
-                                <Button icon="pi pi-upload" label="Importar Lista" class="p-button-primary" />
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="text-center py-12">
-                                <i class="pi pi-user-plus text-6xl text-gray-200 mb-4"></i>
-                                <h4 class="text-lg font-semibold text-gray-900 mb-2">Lista de Votantes</h4>
-                                <p class="text-gray-600">Gestiona la lista de personas habilitadas para votar</p>
-                            </div>
-                        </template>
-                    </Card>
                 </div>
             </main>
         </div>

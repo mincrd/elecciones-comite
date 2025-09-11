@@ -3,27 +3,32 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Tymon\JWTAuth\Http\Middleware\Authenticate as JWTAuthenticate;
+use Tymon\JWTAuth\Http\Middleware\RefreshToken as JWTRefresh;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        // --- ¡LA SOLUCIÓN DEFINITIVA ESTÁ AQUÍ! ---
-        // Esto le dice a Laravel que maneje las peticiones CORS para todas las rutas API
-        // permitiendo cabeceras como 'Authorization', lo que soluciona el error 401.
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
+    ->withMiddleware(function (Middleware $middleware) {
+        // 🔹 JWT Middleware (se aplica globalmente si quieres)
+        $middleware->append([
+            JWTAuthenticate::class,
+            JWTRefresh::class,
         ]);
 
-        // Opcional: Desactiva la protección CSRF para la API si solo usas tokens
-        $middleware->validateCsrfTokens(except: [
-            'api/*'
+        // 👇 Si prefieres aplicarlo solo en API:
+        /*
+        $middleware->group('api', [
+            JWTAuthenticate::class,
+            JWTRefresh::class,
         ]);
+        */
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->create();
