@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\EmpleadoHabilController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Admin\ProcesoController;
@@ -29,6 +30,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::apiResource('procesos', ProcesoController::class);
     Route::apiResource('postulantes', PostulanteController::class);
     Route::get('resultados/{proceso}', [ResultadoController::class, 'obtenerResultados'])->name('resultados');
+    // <-- 2. AÑADIR ESTA LÍNEA PARA LOS EMPLEADOS HÁBILES
+    Route::apiResource('empleados-habiles', EmpleadoHabilController::class);
 });
 
 
