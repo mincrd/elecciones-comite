@@ -5,7 +5,7 @@ import axios from 'axios';
 
 // Usa variable de entorno en vez de 127.0.0.1
 const apiUrl =
-  (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000') + '/api/votacion';
+  (import.meta.env.VITE_API_URL ?? 'https://api-votacion-backend.azurewebsites.net') + '/api/votacion';
 
 export const useVotacionStore = defineStore('votacion', () => {
   const currentStep = ref(1);
