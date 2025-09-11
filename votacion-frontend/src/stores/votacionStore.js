@@ -44,8 +44,8 @@ export const useVotacionStore = defineStore('votacion', () => {
     isLoading.value = true;
     try {
       // (opcional) si tu backend emite token; si no, elimina este bloque
-      // const { data } = await axios.post(`${apiUrl}/registrar-sesion`, { cedula });
-      // localStorage.setItem('authToken', data.token);
+      const { data } = await axios.post(`${apiUrl}/registrar-sesion`, { cedula });
+      localStorage.setItem('authToken', data.token);
 
       // Usa el grupo que ya trajiste en getEstadoVotante
       const grupo = votanteInfo.value?.grupo_ocupacional;
