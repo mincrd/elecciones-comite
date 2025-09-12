@@ -1,26 +1,64 @@
 import axios from 'axios';
 
-// 1. Creamos una instancia de Axios con configuración centralizada.
-//    Lee la URL base directamente desde las variables de entorno (.env).
 const apiClient = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/admin',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api',
+  withCredentials: false,
+  headers: { Accept: 'application/json' },
 });
 
-// 2. (Opcional pero recomendado para el futuro) Aquí podrías añadir "interceptors"
-//    para manejar automáticamente tokens de autenticación en todas las peticiones.
-/*
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken'); // O desde donde gestiones el token
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+const DBG = false;
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  const tokenType = localStorage.getItem('token_type') || 'Bearer';
+  if (token) config.headers.Authorization = `${tokenType} ${token}`;
+  if (DBG) console.debug('[HTTP]', config.method?.toUpperCase(), config.url, 'Auth?', !!token);
   return config;
 });
-*/
+
+let isHandling401 = false;
+const isAuthEndpoint = (url) =>
+  typeof url === 'string' && (url.includes('/login') || url.includes('/logout'));
+
+async function redirectToLoginSPA() {
+  try {
+    const { default: router } = await import('../router');
+    await router.replace({ name: 'Login' });
+  } catch {
+    window.location.assign('/login');
+  }
+}
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || '';
+
+    if (status === 401) {
+      if (isAuthEndpoint(url)) {
+        try {
+          const { useAuthStore } = await import('../stores/authStore');
+          await useAuthStore().logout({ server: false });
+        } catch {}
+        await redirectToLoginSPA();
+        return Promise.reject(error);
+      }
+
+      if (isHandling401) return Promise.reject(error);
+      isHandling401 = true;
+
+      try {
+        const { useAuthStore } = await import('../stores/authStore');
+        await useAuthStore().logout({ server: false });
+      } catch {} finally {
+        isHandling401 = false;
+      }
+
+      await redirectToLoginSPA();
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
-

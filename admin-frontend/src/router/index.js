@@ -1,7 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '../stores/authStore';
+
+// Vistas
 import DashboardView from '../views/DashboardView.vue';
+import LoginView from '../views/LoginView.vue';
 
 export const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginView,
+    meta: { requiresAuth: false }
+  },
   {
     path: '/',
     name: 'Dashboard',
@@ -9,18 +19,19 @@ export const routes = [
     meta: {
       label: 'Inicio',
       icon: 'pi pi-chart-line',
-      description: 'Vista general y resultados en vivo'
+      description: 'Vista general y resultados en vivo',
+      requiresAuth: true
     }
   },
   {
     path: '/empleados',
     name: 'Empleados',
-    // Debes crear este archivo: src/views/EmpleadosView.vue
     component: () => import('../views/EmpleadosView.vue'),
     meta: {
       label: 'Empleados Hábiles',
       icon: 'pi pi-id-card',
-      description: 'Gestionar empleados habilitados para votar'
+      description: 'Gestionar empleados habilitados para votar',
+      requiresAuth: true
     }
   },
   {
@@ -30,7 +41,8 @@ export const routes = [
     meta: {
       label: 'Gestión de Procesos',
       icon: 'pi pi-calendar-plus',
-      description: 'Crear, iniciar y cerrar votaciones'
+      description: 'Crear, iniciar y cerrar votaciones',
+      requiresAuth: true
     }
   },
   {
@@ -40,7 +52,8 @@ export const routes = [
     meta: {
       label: 'Gestión de Votos',
       icon: 'pi pi-check-square',
-      description: 'Supervisar, anular y habilitar votos'
+      description: 'Supervisar, anular y habilitar votos',
+      requiresAuth: true
     }
   },
   {
@@ -50,7 +63,8 @@ export const routes = [
     meta: {
       label: 'Gestión de Resultados',
       icon: 'pi pi-chart-pie',
-      description: 'Ver resultados parciales y finales'
+      description: 'Ver resultados parciales y finales',
+      requiresAuth: true
     }
   },
   {
@@ -60,14 +74,38 @@ export const routes = [
     meta: {
       label: 'Gestión de Usuarios',
       icon: 'pi pi-users',
-      description: 'Administrar usuarios y supervisores'
+      description: 'Administrar usuarios y supervisores',
+      requiresAuth: true
     }
   }
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+});
+
+// Guardia global (hidrata desde localStorage por si el store aún no lo hizo)
+router.beforeEach((to, from, next) => {
+  const auth = useAuthStore();
+
+  // Hidrata token/usuario si el store arranca vacío
+  if (!auth.token) {
+    const t = localStorage.getItem('token');
+    const u = localStorage.getItem('user');
+    if (t) auth.token = t;
+    if (u) auth.user = JSON.parse(u);
+  }
+
+  const needsAuth = to.meta.requiresAuth === true;
+
+  if (needsAuth && !auth.isAuthenticated) {
+    next({ name: 'Login', query: { redirect: to.fullPath } });
+  } else if (to.name === 'Login' && auth.isAuthenticated) {
+    next({ name: 'Dashboard' });
+  } else {
+    next();
+  }
 });
 
 export default router;
