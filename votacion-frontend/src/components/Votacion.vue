@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVotacionStore } from '@/stores/votacionStore';
-import { useToast } from 'primevue/usetoast';
 
 // Componentes de PrimeVue
 import Card from 'primevue/card';
@@ -10,35 +9,35 @@ import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
 import Chip from 'primevue/chip';
-import Toast from 'primevue/toast';
 
-const toast = useToast();
 const votacionStore = useVotacionStore();
 const { currentStep, isLoading, candidatos, votanteInfo } = storeToRefs(votacionStore);
 
 const identificacionForm = ref({ cedula: '' });
 const selectedCandidato = ref(null);
 
+// Estados de validación para el paso 1
+const cedulaError = ref('');
+const hasError = ref(false);
+
 // ✅ Verificación de cédula
 const submitVerificacion = async () => {
+  // Reset error states
+  cedulaError.value = '';
+  hasError.value = false;
+
+  // Validación local
   if (!identificacionForm.value.cedula.trim()) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Atención',
-      detail: 'Debe ingresar su número de cédula.',
-      life: 3000,
-    });
+    cedulaError.value = 'Debe ingresar su número de cédula.';
+    hasError.value = true;
     return;
   }
+
   try {
     await votacionStore.getEstadoVotante(identificacionForm.value.cedula);
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error de Verificación',
-      detail: error.message || 'No se pudo verificar la cédula',
-      life: 4000,
-    });
+    cedulaError.value = error.message || 'No se pudo verificar la cédula. Verifique que sea correcta.';
+    hasError.value = true;
   }
 };
 
@@ -48,24 +47,13 @@ const handleIniciarVotacion = async () => {
   try {
     await votacionStore.fetchCandidatos(votanteInfo.value.grupo_ocupacional);
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.message || 'No se pudieron cargar los candidatos',
-      life: 4000,
-    });
+    // Handle error silently or add custom handling here
   }
 };
 
 // ✅ Enviar voto
 const submitVoto = async () => {
   if (!selectedCandidato.value || !votanteInfo.value) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Atención',
-      detail: 'Debe seleccionar un candidato.',
-      life: 3000,
-    });
     return;
   }
   try {
@@ -74,12 +62,7 @@ const submitVoto = async () => {
       postulanteId: selectedCandidato.value,
     });
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error al Votar',
-      detail: error.message || 'No se pudo registrar el voto',
-      life: 4000,
-    });
+    // Handle error silently or add custom handling here
   }
 };
 
@@ -88,12 +71,20 @@ const reiniciarProceso = () => {
   votacionStore.resetStore();
   identificacionForm.value = { cedula: '' };
   selectedCandidato.value = null;
+  cedulaError.value = '';
+  hasError.value = false;
+};
+
+// Limpiar errores cuando el usuario empiece a escribir
+const onCedulaInput = () => {
+  if (hasError.value) {
+    cedulaError.value = '';
+    hasError.value = false;
+  }
 };
 </script>
 
 <template>
-  <Toast position="top-center" />
-
   <!-- 🔹 Paso 1 (login estilo inspirado) -->
   <div
     v-if="currentStep === 1"
@@ -129,8 +120,20 @@ const reiniciarProceso = () => {
                 v-model="identificacionForm.cedula"
                 placeholder="Ingrese su cédula sin guiones"
                 class="w-full"
+                :class="{ 'p-invalid': hasError }"
                 @keyup.enter="submitVerificacion"
+                @input="onCedulaInput"
               />
+            </div>
+          </div>
+
+          <!-- Mensaje de error -->
+          <div v-if="cedulaError" class="flex justify-center mt-2">
+            <div class="w-3/4">
+              <small class="p-error text-red-500">
+                <i class="pi pi-exclamation-triangle mr-1"></i>
+                {{ cedulaError }}
+              </small>
             </div>
           </div>
 
