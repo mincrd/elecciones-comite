@@ -82,4 +82,30 @@ class PostulanteController extends Controller
 
         return response()->json(null, 204);
     }
+    public function updateFoto(Request $request, Postulante $postulante)
+    {
+        // Validación: imagen JPG/PNG/WebP hasta 2MB
+        $request->validate([
+            'foto' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        // Elimina la foto anterior si existía
+        if ($postulante->foto_path && Storage::disk('public')->exists($postulante->foto_path)) {
+            Storage::disk('public')->delete($postulante->foto_path);
+        }
+
+        // Guarda nueva foto en storage/app/public/postulantes
+        $path = $request->file('foto')->store('postulantes', 'public');
+
+        // Persiste path
+        $postulante->foto_path = $path;
+        $postulante->save();
+
+        // Responde con URL pública (requiere 'php artisan storage:link')
+        return response()->json([
+            'message'    => 'Foto actualizada correctamente.',
+            'postulante' => $postulante->fresh(),
+            'foto_url'   => Storage::url($path),
+        ]);
+    }
 }

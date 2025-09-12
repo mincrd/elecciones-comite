@@ -32,6 +32,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('votos/estadisticas', [VotosAdminController::class, 'estadisticas']);
         Route::apiResource('procesos', ProcesoController::class);
         Route::apiResource('postulantes', PostulanteController::class);
+        Route::post('postulantes/{postulante}/foto', [PostulanteController::class, 'updateFoto']);
+
         Route::get('resultados/{proceso}', [ResultadoController::class, 'obtenerResultados'])->name('resultados');
         // <-- 2. AÑADIR ESTA LÍNEA PARA LOS EMPLEADOS HÁBILES
         Route::apiResource('empleados-habiles', EmpleadoHabilController::class);
