@@ -36,7 +36,7 @@ const submitVerificacion = async () => {
   try {
     await votacionStore.getEstadoVotante(identificacionForm.value.cedula);
   } catch (error) {
-    cedulaError.value = error.message || 'No se pudo verificar la cédula. Verifique que sea correcta.';
+    cedulaError.value ='No se pudo verificar la cédula. Verifique que sea correcta.';
     hasError.value = true;
   }
 };
@@ -88,7 +88,7 @@ const onCedulaInput = () => {
   <!-- 🔹 Paso 1 (login estilo inspirado) -->
   <div
     v-if="currentStep === 1"
-    class="h-screen flex justify-center items-center px-6 py-12"
+    class="h-screen flex justify-center items-center px-6"
   >
     <div
       class="grid xl:grid-cols-2 grid-cols-1 bg-white shadow-2xl rounded-lg overflow-hidden max-w-4xl w-full"
