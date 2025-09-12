@@ -124,7 +124,7 @@ class PostulanteController extends Controller
     public function updateFoto(Request $request, Postulante $postulante)
     {
         $request->validate([
-            'foto' => ['required','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'foto' => ['required','image','mimes:jpg,jpeg,png,webp','max:10240'],
         ], [
             'foto.image' => 'El archivo debe ser una imagen.',
             'foto.mimes' => 'Formatos permitidos: jpg, jpeg, png, webp.',
