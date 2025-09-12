@@ -31,7 +31,8 @@ import Toast from 'primevue/toast';
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   line-height: 1.5;
-  background-color: #f8fafc; /* Un gris muy claro que combina bien */
+  background: linear-gradient(to bottom, #e6edfb, #c2d3f7, #7ea0eb);
+ /* Un gris muy claro que combina bien */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -64,111 +64,142 @@ const reiniciarProceso = () => {
     selectedCandidato.value = null;
 };
 </script>
+
 <template>
     <Toast position="top-center" />
+
+    <!-- 🔹 Header institucional -->
+    <header class="header-logos">
+        <div class="header-content flex flec-row">
+            <img src="/RD-Cultura.png" alt="Ministerio de Cultura" class="logo" />
+            <h1 class="header-title">Votación del Comité de Ética</h1>
+        </div>
+    </header>
+
+    <!-- 🔹 Contenedor principal -->
     <div class="votacion-container">
-        <Card class="w-full max-w-2xl shadow-2xl rounded-2xl overflow-hidden">
+        <Card class="votacion-card shadow-2xl rounded-2xl overflow-hidden">
             <template #content>
-                 <div class="p-4 sm:p-8">
-                    <header class="text-center mb-8">
-                        <i class="pi pi-check-to-slot text-5xl text-primary"></i>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-4">Votación del Comité de Ética</h1>
-                    </header>
-
+                 <div class="card-content">
                     <transition name="fade" mode="out-in">
+                        <!-- Paso 1 -->
                         <div v-if="currentStep === 1" key="step1" class="step-box">
-  <p class="text-center">Para participar, ingrese su cédula de identidad.</p>
+                            <p class="text-center text-black">Para participar, ingrese su cédula de identidad.</p>
 
-  <div class="input-wrapper">
-    <div class="p-inputgroup">
-      <span class="p-inputgroup-addon"><i class="pi pi-id-card"></i></span>
-      <InputText
-        id="cedula"
-        v-model="identificacionForm.cedula"
-        placeholder="Ingrese su cédula sin guiones"
-        @keyup.enter="submitVerificacion"
-      />
-    </div>
-  </div>
+                            <div class="input-wrapper">
+                                <div class="p-inputgroup">
+                                    <!-- <span class="p-inputgroup-addon"><i class="pi pi-id-card"></i></span> -->
+                                    <InputText
+  id="cedula"
+  v-model="identificacionForm.cedula"
+  placeholder="Ingrese su cédula sin guiones"
+  class="w-1/2"
+  @keyup.enter="submitVerificacion"
+/>
+                                </div>
+                            </div>
 
-  <div class="button-wrapper">
-    <Button
-      label="Verificar Identidad"
-      icon="pi pi-user-check"
-      iconPos="right"
-      class="btn-full"
-      @click="submitVerificacion"
-      :loading="isLoading"
-    />
-  </div>
-</div>
+                            <div class="button-wrapper">
+                                <Button
+                                    label="Verificar Identidad"
+                                    icon="pi pi-user-check"
+                                    iconPos="right"
+                                    class="btn-full"
+                                    @click="submitVerificacion"
+                                    :loading="isLoading"
+                                />
+                            </div>
+                        </div>
 
-
+                        <!-- Paso 2 -->
                         <div v-else-if="currentStep === 2" key="step2" class="text-center">
                             <div v-if="votanteInfo">
-                                <i class="pi pi-user text-4xl text-primary"></i>
+                                <!-- <i class="pi pi-user text-4xl text-primary"></i> -->
                                 <h2 class="text-2xl font-bold mt-4">¡Bienvenido(a), {{ votanteInfo.nombre }}!</h2>
                                 
                                 <div class="votante-info-box">
                                     <p v-if="votanteInfo.cargo">
                                         <i class="pi pi-briefcase" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Cargo: </strong> {{ votanteInfo.cargo }}
+                                        <strong>Cargo:</strong>&nbsp;{{ votanteInfo.cargo }}
                                     </p>
+
                                     <p v-if="votanteInfo.lugar_trabajo">
                                         <i class="pi pi-building" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Ubicación: </strong> {{ votanteInfo.lugar_trabajo }}
+                                        <strong>Ubicación:</strong>&nbsp;{{ votanteInfo.lugar_trabajo }}
                                     </p>
                                 </div>
                                 
                                 <div v-if="votanteInfo.yaVoto" class="mt-4">
-                                <!-- Chip -->
-                                <Chip 
-                                    label="Voto ya registrado" 
-                                    icon="pi pi-check-circle"
-                                    class="custom-chip-success"
-                                />
+                                    <Chip 
+                                        label="Voto ya registrado" 
+                                        icon="pi pi-check-circle"
+                                        class="custom-chip-success"
+                                    />
 
-                                <!-- Texto -->
-                                <p class="text-gray-600 mt-4">
-                                    Usted ya ha participado en este proceso de votación. 
-                                    Gracias por su contribución.
-                                </p>
+                                    <p class="text-black mt-4">
+                                        Usted ya ha participado en este proceso de votación. 
+                                    </p>
+                                    <p class="text-black">
+                                        Gracias por su contribución.
+                                    </p>
 
-                                <!-- Botón -->
-                                <Button 
-                                    label="Finalizar" 
-                                    icon="pi pi-home" 
-                                    class="mt-6 p-button-secondary custom-btn-finalizar"
-                                    @click="reiniciarProceso" 
-                                />
+                                    <Button 
+                                        label="Finalizar" 
+                                        icon="pi pi-home" 
+                                        class="mt-6 p-button-success custom-btn-finalizar w-1/2"
+                                        @click="reiniciarProceso" 
+                                    />
                                 </div>
 
                                 <div v-else class="mt-4">
                                      <Chip label="Habilitado para Votar" icon="pi pi-verified" class="bg-blue-100 text-blue-800" />
-                                     <p class="text-gray-600 mt-4">Hemos confirmado sus datos. Presione el botón para continuar y ver los candidatos.</p>
-                                     <Button label="Iniciar Votación" icon="pi pi-arrow-right" class="mt-6" @click="handleIniciarVotacion" :loading="isLoading" />
+                                     <div>
+
+                                         <Button label="Iniciar Votación" icon="pi pi-arrow-right" class="mt-6" @click="handleIniciarVotacion" :loading="isLoading" />
+                                         <p class="text-gray-600 mt-4">Presione el botón para continuar y ver los candidatos.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Paso 3 -->
                         <div v-else-if="currentStep === 3" key="step3">
-                            <p class="text-center text-gray-600 mb-8">Seleccione el candidato de su preferencia para su grupo ocupacional.</p>
-                            <div v-if="candidatos.length > 0" class="space-y-4 candidate-list">
-                                <div v-for="candidato in candidatos" :key="candidato.id"
-                                     class="candidate-card"
-                                     :class="{'selected': selectedCandidato === candidato.id}"
-                                     @click="selectedCandidato = candidato.id">
-                                    <RadioButton v-model="selectedCandidato" :inputId="candidato.id.toString()" name="candidato" :value="candidato.id" />
-                                    <div class="ml-4 flex-grow">
-                                        <label :for="candidato.id.toString()" class="font-bold text-xl text-gray-800">{{ candidato.nombre_completo }}</label>
-                                        <p class="text-primary-800 font-medium">{{ candidato.cargo }}</p>
-                                        <div class="mt-3 flex flex-wrap gap-2">
-                                            <Chip v-for="valor in candidato.valores" :key="valor" :label="valor" class="text-xs custom-chip" />
-                                        </div>
-                                    </div>
-                                    <i v-if="selectedCandidato === candidato.id" class="pi pi-check-circle text-2xl text-white check-icon"></i>
-                                </div>
-                            </div>
+                            <p class="text-center text-black mb-5">Seleccione el candidato de su preferencia para su grupo ocupacional.</p>
+                            <div v-if="candidatos.length > 0" 
+     class="grid grid-cols-3 gap-6 candidate-list">
+     
+  <div v-for="candidato in candidatos" 
+       :key="candidato.id"
+       class="candidate-card"
+       :class="{'selected': selectedCandidato === candidato.id}"
+       @click="selectedCandidato = candidato.id">
+
+      <RadioButton 
+        v-model="selectedCandidato" 
+        :inputId="candidato.id.toString()" 
+        name="candidato" 
+        :value="candidato.id" 
+      />
+
+      <div class="ml-4 flex-grow">
+        <label :for="candidato.id.toString()" 
+               class="font-bold text-xl text-gray-800">
+          {{ candidato.nombre_completo }}
+        </label>
+        <p class="text-primary-800 font-medium">{{ candidato.cargo }}</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Chip v-for="valor in candidato.valores" 
+                :key="valor" 
+                :label="valor" 
+                class="text-xs custom-chip" />
+        </div>
+      </div>
+
+      <i v-if="selectedCandidato === candidato.id" 
+         class="pi pi-check-circle text-2xl text-white check-icon"></i>
+  </div>
+</div>
+
                             <div v-else class="text-center py-8">
                                 <i class="pi pi-info-circle text-4xl text-gray-400"></i>
                                 <p class="text-gray-500 mt-4">No hay candidatos registrados para su grupo ocupacional en este proceso.</p>
@@ -178,6 +209,7 @@ const reiniciarProceso = () => {
                             </div>
                         </div>
 
+                        <!-- Paso 4 -->
                         <div v-else-if="currentStep === 4" key="step4" class="text-center py-8">
                              <i class="pi pi-verified text-8xl text-green-500 animate-bounce-in"></i>
                             <h2 class="mt-6 text-3xl font-bold text-gray-800">¡Gracias por su participación!</h2>
@@ -192,15 +224,65 @@ const reiniciarProceso = () => {
 </template>
 
 <style scoped>
-.votacion-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 1rem;
-    background-color: #f0f4f8;
+/* 🔹 Fondo degradado claro */
+body {
+    background: linear-gradient(to bottom, #e6edfb, #c2d3f7, #7ea0eb);
+    margin: 0;
 }
 
+/* 🔹 Header sin fondo con contenido centrado */
+.header-logos {
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.logo {
+    height: 80px;
+    object-fit: contain;
+}
+
+.header-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1f2937;
+    margin: 0;
+    text-align: center;
+    flex-grow: 1;
+}
+
+/* 🔹 Contenedor principal con ancho máximo */
+.votacion-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* 🔹 Card principal */
+.votacion-card {
+    width: 100%;
+    max-width: 800px;
+}
+
+.card-content {
+    /* padding: 2rem; */
+}
+
+/* 🔹 Caja de info votante */
 .votante-info-box {
     background-color: #f8fafc;
     border: 1px solid #e5e7eb;
@@ -213,13 +295,14 @@ const reiniciarProceso = () => {
     flex-direction: column;
     gap: 0.5rem;
 }
-
 .votante-info-box p {
     margin: 0;
     color: #4b5563;
     display: flex;
     align-items: center;
 }
+
+/* 🔹 Cards de candidatos */
 .candidate-card {
     position: relative;
     display: flex;
@@ -232,7 +315,6 @@ const reiniciarProceso = () => {
     background-color: #ffffff;
     overflow: hidden;
 }
-
 .candidate-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.07);
@@ -264,6 +346,8 @@ const reiniciarProceso = () => {
     background-color: #eff6ff;
     color: var(--primary-color);
 }
+
+/* 🔹 Animaciones fade */
 .fade-enter-active, .fade-leave-active {
     transition: opacity 0.3s ease;
 }
@@ -271,25 +355,48 @@ const reiniciarProceso = () => {
     opacity: 0;
 }
 
-/* Espacio entre ícono y input */
+/* 🔹 Espacios inputs y botones */
 .p-inputgroup .p-inputgroup-addon {
-  margin-right: 8px; /* separa el icono del input */
+  margin-right: 8px;
 }
-
-/* Wrapper del input */
 .input-wrapper {
-  margin: 1rem 0; /* separa del texto superior */
+  margin: 1rem 0;
 }
-
-/* Wrapper del botón */
 .button-wrapper {
-  margin-top: 1.5rem; /* separa el botón del input */
+  margin-top: 1.5rem;
 }
-
-/* Botón ocupa todo el ancho */
 .btn-full {
-  width: 100%;
+  width: 50%;
 }
 
+/* 🔹 Responsive */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .header-title {
+        font-size: 2rem;
+    }
+    
+    .votacion-container {
+        padding: 0 1rem 2rem;
+    }
+    
+    .card-content {
+        padding: 1.5rem;
+    }
+}
 
+@media (max-width: 480px) {
+    .header-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-content {
+        padding: 1rem;
+    }
+}
 </style>
