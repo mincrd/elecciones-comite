@@ -90,12 +90,12 @@ const reiniciarProceso = () => {
                                 <div class="p-inputgroup">
                                     <!-- <span class="p-inputgroup-addon"><i class="pi pi-id-card"></i></span> -->
                                     <InputText
-  id="cedula"
-  v-model="identificacionForm.cedula"
-  placeholder="Ingrese su cédula sin guiones"
-  class="w-1/2"
-  @keyup.enter="submitVerificacion"
-/>
+                                        id="cedula"
+                                        v-model="identificacionForm.cedula"
+                                        placeholder="Ingrese su cédula sin guiones"
+                                        class="w-1/2"
+                                        @keyup.enter="submitVerificacion"
+                                    />
                                 </div>
                             </div>
 
@@ -112,55 +112,53 @@ const reiniciarProceso = () => {
                         </div>
 
                         <!-- Paso 2 -->
-                        <div v-else-if="currentStep === 2" key="step2" class="text-center">
-                            <div v-if="votanteInfo">
-                                <!-- <i class="pi pi-user text-4xl text-primary"></i> -->
-                                <h2 class="text-2xl font-bold mt-4">¡Bienvenido(a), {{ votanteInfo.nombre }}!</h2>
-                                
-                                <div class="votante-info-box">
-                                    <p v-if="votanteInfo.cargo">
-                                        <i class="pi pi-briefcase" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Cargo:</strong>&nbsp;{{ votanteInfo.cargo }}
-                                    </p>
+                        <div v-else-if="currentStep === 2" key="step2" class="text-center w-full flex flex-col items-center">
+                            <h2 class="text-2xl font-bold mt-4">¡Bienvenido(a), {{ votanteInfo.nombre }}!</h2>
 
-                                    <p v-if="votanteInfo.lugar_trabajo">
-                                        <i class="pi pi-building" style="font-size: 1rem; margin-right: 8px;"></i>
-                                        <strong>Ubicación:</strong>&nbsp;{{ votanteInfo.lugar_trabajo }}
-                                    </p>
-                                </div>
-                                
-                                <div v-if="votanteInfo.yaVoto" class="mt-4">
+                            <div v-if="votanteInfo" class="votante-info-card mt-6">
+                                <div class="flex flex-col gap-2">
+                                <p v-if="votanteInfo.cargo">
+                                    <strong>Cargo:</strong> {{ votanteInfo.cargo }}
+                                </p>
+                                <p v-if="votanteInfo.lugar_trabajo">
+                                    <strong>Ubicación:</strong> {{ votanteInfo.lugar_trabajo }}
+                                </p>
+                                <p class="mt-2">
                                     <Chip 
+                                    v-if="votanteInfo.yaVoto" 
                                         label="Voto ya registrado" 
-                                        icon="pi pi-check-circle"
-                                        class="custom-chip-success"
+                                        icon="pi pi-check-circle" 
+                                        class="custom-chip-success" 
                                     />
-
-                                    <p class="text-black mt-4">
-                                        Usted ya ha participado en este proceso de votación. 
-                                    </p>
-                                    <p class="text-black">
-                                        Gracias por su contribución.
-                                    </p>
-
-                                    <Button 
-                                        label="Finalizar" 
-                                        icon="pi pi-home" 
-                                        class="mt-6 p-button-success custom-btn-finalizar w-1/2"
-                                        @click="reiniciarProceso" 
+                                    <Chip 
+                                        v-else 
+                                        label="Habilitado para votar" 
+                                        icon="pi pi-verified" 
+                                        class="bg-blue-100 text-blue-800" 
                                     />
+                                </p>
                                 </div>
 
-                                <div v-else class="mt-4">
-                                     <Chip label="Habilitado para Votar" icon="pi pi-verified" class="bg-blue-100 text-blue-800" />
-                                     <div>
-
-                                         <Button label="Iniciar Votación" icon="pi pi-arrow-right" class="mt-6" @click="handleIniciarVotacion" :loading="isLoading" />
-                                         <p class="text-gray-600 mt-4">Presione el botón para continuar y ver los candidatos.</p>
-                                    </div>
+                                <div class="mt-4 w-full flex justify-center">
+                                <Button 
+                                    v-if="votanteInfo.yaVoto" 
+                                    label="Finalizar" 
+                                    icon="pi pi-home" 
+                                    class="p-button-success w-60" 
+                                    @click="reiniciarProceso" 
+                                />
+                                <Button 
+                                    v-else 
+                                    label="Iniciar Votación" 
+                                    icon="pi pi-arrow-right" 
+                                    class="p-button-primary w-1/2" 
+                                    @click="handleIniciarVotacion" 
+                                    :loading="isLoading" 
+                                />
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- Paso 3 -->
                         <div v-else-if="currentStep === 3" key="step3">
