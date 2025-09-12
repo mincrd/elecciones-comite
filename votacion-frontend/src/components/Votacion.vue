@@ -194,13 +194,6 @@ const onCedulaInput = () => {
                     </p>
                     <p class="mt-2">
                       <Chip
-                        v-if="votanteInfo.yaVoto"
-                        label="Voto ya registrado"
-                        icon="pi pi-check-circle"
-                        class="custom-chip-success"
-                      />
-                      <Chip
-                        v-else
                         label="Habilitado para votar"
                         icon="pi pi-verified"
                         class="bg-blue-100 text-blue-800"
@@ -209,14 +202,6 @@ const onCedulaInput = () => {
                   </div>
                   <div class="mt-4 w-full flex justify-center">
                     <Button
-                      v-if="votanteInfo.yaVoto"
-                      label="Finalizar"
-                      icon="pi pi-home"
-                      class="p-button-success w-60"
-                      @click="reiniciarProceso"
-                    />
-                    <Button
-                      v-else
                       label="Iniciar Votación"
                       icon="pi pi-arrow-right"
                       class="p-button-primary w-1/2"
@@ -228,73 +213,90 @@ const onCedulaInput = () => {
               </div>
 
               <!-- Paso 3 -->
-              <div v-else-if="currentStep === 3" key="step3">
+                <div v-else-if="currentStep === 3" key="step3">
                 <p class="text-center text-black mb-5">
-                  Seleccione el candidato de su preferencia para su grupo
-                  ocupacional.
+                    Seleccione el candidato de su preferencia para su grupo ocupacional.
                 </p>
+
                 <div
-                  v-if="candidatos.length > 0"
-                  class="grid grid-cols-3 gap-6 candidate-list"
+                    v-if="candidatos.length > 0"
+                    class="grid grid-cols-3 gap-6 candidate-list"
                 >
-                  <div
+                    <div
                     v-for="candidato in candidatos"
                     :key="candidato.id"
-                    class="candidate-card"
+                    class="candidate-card relative"
                     :class="{ selected: selectedCandidato === candidato.id }"
                     @click="selectedCandidato = candidato.id"
-                  >
-                    <RadioButton
-                      v-model="selectedCandidato"
-                      :inputId="candidato.id.toString()"
-                      name="candidato"
-                      :value="candidato.id"
-                    />
-                    <div class="ml-4 flex-grow">
-                      <label
-                        :for="candidato.id.toString()"
-                        class="font-bold text-xl text-gray-800"
-                      >
-                        {{ candidato.nombre_completo }}
-                      </label>
-                      <p class="text-primary-800 font-medium">
-                        {{ candidato.cargo }}
-                      </p>
-                      <div class="mt-3 flex flex-wrap gap-2">
-                        <Chip
-                          v-for="valor in candidato.valores"
-                          :key="valor"
-                          :label="valor"
-                          class="text-xs custom-chip"
+                    >
+                    <!-- Imagen o Avatar -->
+                    <div class="candidate-image">
+                        <img
+                        v-if="candidato.foto_url"
+                        :src="candidato.foto_url"
+                        alt="Foto candidato"
+                        class="rounded-full w-24 h-24 mx-auto object-cover"
                         />
-                      </div>
+                        <div
+                        v-else
+                        class="rounded-full w-24 h-24 mx-auto flex items-center justify-center bg-gray-300"
+                        >
+                        <i class="pi pi-user text-4xl text-white"></i>
+                        </div>
                     </div>
+
+                    <!-- Info -->
+                    <div class="candidate-info mt-4">
+                        <label
+                        :for="candidato.id.toString()"
+                        class="font-semibold text-lg text-gray-800 block"
+                        >
+                        {{ candidato.nombre_completo }}
+                        </label>
+                        <p class="text-primary-800 font-medium text-sm">
+                        {{ candidato.cargo }}
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2 justify-center">
+                        <Chip
+                            v-for="valor in candidato.valores"
+                            :key="valor"
+                            :label="valor"
+                            class="text-xs custom-chip"
+                        />
+                        </div>
+                    </div>
+
+                    <!-- Icono selección -->
                     <i
-                      v-if="selectedCandidato === candidato.id"
-                      class="pi pi-check-circle text-2xl text-green-500 check-icon"
+                        v-if="selectedCandidato === candidato.id"
+                        class="pi pi-check-circle check-icon text-green-500 text-2xl absolute top-2 right-2"
                     ></i>
-                  </div>
+                    <i
+                        v-else
+                        class="pi pi-circle-off text-gray-400 text-2xl absolute top-2 right-2"
+                    ></i>
+                    </div>
                 </div>
 
                 <div v-else class="text-center py-8">
-                  <i class="pi pi-info-circle text-4xl text-gray-400"></i>
-                  <p class="text-gray-500 mt-4">
-                    No hay candidatos registrados para su grupo ocupacional en
-                    este proceso.
-                  </p>
+                    <i class="pi pi-info-circle text-4xl text-gray-400"></i>
+                    <p class="text-gray-500 mt-4">
+                    No hay candidatos registrados para su grupo ocupacional en este proceso.
+                    </p>
                 </div>
 
                 <div class="mt-8">
-                  <Button
+                    <Button
                     label="Confirmar Voto"
                     icon="pi pi-check"
-                    class="w-full p-button-success p-button-lg"
+                    class="w-full p-button-success p-button-lg confirm-button"
                     @click="submitVoto"
                     :loading="isLoading"
                     :disabled="!candidatos.length || !selectedCandidato"
-                  />
+                    />
                 </div>
-              </div>
+                </div>
+
 
               <!-- Paso 4 -->
               <div
@@ -333,7 +335,7 @@ body {
     margin: 0;
 }
 
-/* 🔹 Header sin fondo con contenido centrado */
+/* 🔹 Header */
 .header-logos {
     padding: 1.5rem 0;
     margin-bottom: 2rem;
@@ -364,7 +366,7 @@ body {
     flex-grow: 1;
 }
 
-/* 🔹 Contenedor principal con ancho máximo */
+/* 🔹 Contenedor principal */
 .votacion-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -385,31 +387,12 @@ body {
     /* padding: 2rem; */
 }
 
-/* 🔹 Caja de info votante */
-.votante-info-box {
-    background-color: #f8fafc;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1rem;
-    margin: 1.5rem auto;
-    max-width: 400px;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.votante-info-box p {
-    margin: 0;
-    color: #4b5563;
-    display: flex;
-    align-items: center;
-}
-
 /* 🔹 Cards de candidatos */
 .candidate-card {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
     padding: 1.5rem;
     border: 2px solid #e5e7eb;
     border-radius: 16px;
@@ -417,6 +400,7 @@ body {
     transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
     background-color: #ffffff;
     overflow: hidden;
+    text-align: center;
 }
 .candidate-card:hover {
     transform: translateY(-5px);
@@ -452,26 +436,18 @@ body {
     color: #ffffff;
 }
 
-/* 🔹 Animaciones fade */
+/* 🔹 Botón confirmar deshabilitado con cursor */
+.confirm-button:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+/* 🔹 Animaciones */
 .fade-enter-active, .fade-leave-active {
     transition: opacity 0.3s ease;
 }
 .fade-enter-from, .fade-leave-to {
     opacity: 0;
-}
-
-/* 🔹 Espacios inputs y botones */
-.p-inputgroup .p-inputgroup-addon {
-  margin-right: 8px;
-}
-.input-wrapper {
-  margin: 1rem 0;
-}
-.button-wrapper {
-  margin-top: 1.5rem;
-}
-.btn-full {
-  width: 50%;
 }
 
 /* 🔹 Responsive */
