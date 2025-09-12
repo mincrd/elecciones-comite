@@ -5,53 +5,81 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Postulante;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class PostulanteController extends Controller
 {
     public function index()
     {
-        return Postulante::with('proceso')->get();
+        // Si quieres paginar, cámbialo por paginate()
+        return response()->json(Postulante::latest('id')->get());
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'proceso_id' => 'required|exists:procesos,id',
-            'nombre_completo' => 'required|string|max:255',
-            'cargo' => 'required|string|max:255',
-            'email' => 'required|email|unique:postulantes,email',
-            'telefono' => 'nullable|string',
-            'grupo_ocupacional' => 'required|in:I,II,III,IV,V',
-            'valores' => 'required|array'
+        $data = $request->validate([
+            'proceso_id'        => ['required', 'integer', 'exists:procesos,id'],
+            'nombre_completo'   => ['required', 'string', 'max:255'],
+            'cargo'             => ['nullable', 'string', 'max:255'],
+            'email'             => ['nullable', 'email', 'max:255'],
+            'telefono'          => ['nullable', 'string', 'max:50'],
+            'grupo_ocupacional' => ['required', 'string', 'max:100'],
+            'valores'           => ['nullable', 'array'],
+            'foto'              => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], // 2MB
+        ], [
+            'foto.image' => 'El archivo debe ser una imagen.',
+            'foto.mimes' => 'Formatos permitidos: jpg, jpeg, png, webp.',
+            'foto.max'   => 'La imagen no puede exceder 2MB.',
         ]);
 
-        $postulante = Postulante::create($request->all());
+        // Guardar imagen si llega
+        if ($request->hasFile('foto')) {
+            $data['foto_path'] = $request->file('foto')->store('postulantes', 'public');
+        }
+
+        $postulante = Postulante::create($data);
         return response()->json($postulante, 201);
     }
 
     public function show(Postulante $postulante)
     {
-        return $postulante->load('proceso');
+        return response()->json($postulante);
     }
 
     public function update(Request $request, Postulante $postulante)
     {
-        $request->validate([
-            'proceso_id' => 'sometimes|required|exists:procesos,id',
-            'nombre_completo' => 'sometimes|required|string|max:255',
-            'cargo' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:postulantes,email,' . $postulante->id,
-            'grupo_ocupacional' => 'sometimes|required|in:I,II,III,IV,V',
-            'valores' => 'sometimes|required|array'
+        $data = $request->validate([
+            'proceso_id'        => ['sometimes', 'required', 'integer', 'exists:procesos,id'],
+            'nombre_completo'   => ['sometimes', 'required', 'string', 'max:255'],
+            'cargo'             => ['sometimes', 'nullable', 'string', 'max:255'],
+            'email'             => ['sometimes', 'nullable', 'email', 'max:255'],
+            'telefono'          => ['sometimes', 'nullable', 'string', 'max:50'],
+            'grupo_ocupacional' => ['sometimes', 'required', 'string', 'max:100'],
+            'valores'           => ['sometimes', 'nullable', 'array'],
+            'foto'              => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        $postulante->update($request->all());
+        if ($request->hasFile('foto')) {
+            // Borrar la anterior si existe
+            if ($postulante->foto_path && Storage::disk('public')->exists($postulante->foto_path)) {
+                Storage::disk('public')->delete($postulante->foto_path);
+            }
+            $data['foto_path'] = $request->file('foto')->store('postulantes', 'public');
+        }
+
+        $postulante->update($data);
         return response()->json($postulante);
     }
 
     public function destroy(Postulante $postulante)
     {
+        // Eliminar imagen asociada
+        if ($postulante->foto_path && Storage::disk('public')->exists($postulante->foto_path)) {
+            Storage::disk('public')->delete($postulante->foto_path);
+        }
         $postulante->delete();
+
         return response()->json(null, 204);
     }
 }

@@ -14,10 +14,33 @@ class EmpleadoHabilController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function index()
+    public function index(Request $request)
     {
-        $empleados = EmpleadoHabil::all();
-        return response()->json($empleados);
+        $perPage = (int) $request->input('per_page', 10); // 10 por defecto
+        $search  = trim((string) $request->input('search', ''));
+        $sortBy  = $request->input('sort_by', 'id');      // opcional
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $q = EmpleadoHabil::query();
+
+        if ($search !== '') {
+            $q->where(function ($qb) use ($search) {
+                $qb->where('nombre_completo', 'like', "%{$search}%")
+                    ->orWhere('cedula', 'like', "%{$search}%")
+                    ->orWhere('cargo', 'like', "%{$search}%")
+                    ->orWhere('grupo_ocupacional', 'like', "%{$search}%")
+                    ->orWhere('lugar_de_funciones', 'like', "%{$search}%");
+            });
+        }
+
+        $q->orderBy($sortBy, $sortDir);
+
+        if ($perPage > 0) {
+            return response()->json($q->paginate($perPage));
+        }
+
+        // Si per_page=0 → sin paginar
+        return response()->json($q->get());
     }
 
     /**

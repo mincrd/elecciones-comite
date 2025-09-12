@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpleadoHabil;
+use App\Models\LogAuditoria;
 use App\Models\Postulante;
 use App\Models\Proceso;
 use App\Models\RegistroVoto;
 use App\Models\Voto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth; // Opcional, pero bueno tenerlo
 
@@ -133,5 +135,29 @@ class VotacionController extends Controller
         ]);
 
         return response()->json(['message' => '¡Voto registrado exitosamente!']);
+    }
+
+    public function anularVoto(Request $request, Voto $voto)
+    {
+        $request->validate([
+            'razon' => 'required|string|min:10|max:500',
+        ]);
+
+        // Lógica para anular el voto (ej. marcarlo como anulado)
+        $voto->anulado = true;
+        $voto->save();
+
+        $empleado = $voto->empleado->nombre_completo; // Asumiendo relación
+
+        // Registrar en auditoría
+        LogAuditoria::create([
+            'user_id' => Auth::id(),
+            'accion' => 'ANULACION_VOTO',
+            'descripcion' => "Se anuló el voto del empleado: {$empleado}. Razón: " . $request->razon,
+            'auditable_id' => $voto->id,
+            'auditable_type' => Voto::class,
+        ]);
+
+        return response()->json(['message' => 'Voto anulado correctamente.']);
     }
 }

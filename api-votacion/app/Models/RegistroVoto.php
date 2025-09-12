@@ -31,6 +31,11 @@ class RegistroVoto extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+// app/Models/RegistroVoto.php
+    public function voto()
+    {
+        return $this->hasOne(\App\Models\Voto::class, 'registro_voto_id');
+    }
 
     // Relaciones
     public function postulante()
