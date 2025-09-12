@@ -19,49 +19,75 @@ const { currentStep, isLoading, candidatos, votanteInfo } = storeToRefs(votacion
 const identificacionForm = ref({ cedula: '' });
 const selectedCandidato = ref(null);
 
-// ✅ LÓGICA RESTAURADA
+// ✅ Verificación de cédula
 const submitVerificacion = async () => {
-    if (!identificacionForm.value.cedula.trim()) {
-        toast.add({ severity: 'warn', summary: 'Atención', detail: 'Debe ingresar su número de cédula.', life: 3000 });
-        return;
-    }
-    try {
-        await votacionStore.getEstadoVotante(identificacionForm.value.cedula);
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error de Verificación', detail: error.message, life: 4000 });
-    }
+  if (!identificacionForm.value.cedula.trim()) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Atención',
+      detail: 'Debe ingresar su número de cédula.',
+      life: 3000,
+    });
+    return;
+  }
+  try {
+    await votacionStore.getEstadoVotante(identificacionForm.value.cedula);
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error de Verificación',
+      detail: error.message || 'No se pudo verificar la cédula',
+      life: 4000,
+    });
+  }
 };
 
+// ✅ Iniciar votación
 const handleIniciarVotacion = async () => {
-    if (!votanteInfo.value) return;
-    try {
-        await votacionStore.fetchCandidatos(votanteInfo.value.grupo_ocupacional);
-    } catch (error) {
-         toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 4000 });
-    }
-}
-
-const submitVoto = async () => {
-    if (!selectedCandidato.value || !votanteInfo.value) {
-        toast.add({ severity: 'warn', summary: 'Atención', detail: 'Debe seleccionar un candidato.', life: 3000 });
-        return;
-    }
-    try {
-        // Corregido para enviar la cédula correcta
-        await votacionStore.handleVoto({
-            cedula: identificacionForm.value.cedula,
-            postulanteId: selectedCandidato.value
-        });
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error al Votar', detail: error.message, life: 4000 });
-    }
+  if (!votanteInfo.value) return;
+  try {
+    await votacionStore.fetchCandidatos(votanteInfo.value.grupo_ocupacional);
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'No se pudieron cargar los candidatos',
+      life: 4000,
+    });
+  }
 };
 
-// ✅ LÓGICA RESTAURADA
+// ✅ Enviar voto
+const submitVoto = async () => {
+  if (!selectedCandidato.value || !votanteInfo.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Atención',
+      detail: 'Debe seleccionar un candidato.',
+      life: 3000,
+    });
+    return;
+  }
+  try {
+    await votacionStore.handleVoto({
+      cedula: identificacionForm.value.cedula,
+      postulanteId: selectedCandidato.value,
+    });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error al Votar',
+      detail: error.message || 'No se pudo registrar el voto',
+      life: 4000,
+    });
+  }
+};
+
+// ✅ Reiniciar proceso
 const reiniciarProceso = () => {
-    votacionStore.resetStore();
-    identificacionForm.value = { cedula: '' };
-    selectedCandidato.value = null;
+  votacionStore.resetStore();
+  identificacionForm.value = { cedula: '' };
+  selectedCandidato.value = null;
 };
 </script>
 
@@ -69,8 +95,13 @@ const reiniciarProceso = () => {
   <Toast position="top-center" />
 
   <!-- 🔹 Paso 1 (login estilo inspirado) -->
-  <div v-if="currentStep === 1" class="h-screen flex justify-center items-center px-6 py-12">
-    <div class="grid xl:grid-cols-2 grid-cols-1 bg-white shadow-2xl rounded-lg overflow-hidden max-w-4xl w-full">
+  <div
+    v-if="currentStep === 1"
+    class="h-screen flex justify-center items-center px-6 py-12"
+  >
+    <div
+      class="grid xl:grid-cols-2 grid-cols-1 bg-white shadow-2xl rounded-lg overflow-hidden max-w-4xl w-full"
+    >
       <!-- Imagen lateral -->
       <div
         class="hidden xl:block bg-cover bg-center"
@@ -87,7 +118,9 @@ const reiniciarProceso = () => {
         </div>
 
         <div class="mb-6">
-          <p class="text-center text-black">Para participar, ingrese su cédula de identidad.</p>
+          <p class="text-center text-black">
+            Para participar, ingrese su cédula de identidad.
+          </p>
 
           <div class="input-wrapper mt-4 flex justify-center">
             <div class="p-inputgroup w-3/4">
@@ -121,7 +154,11 @@ const reiniciarProceso = () => {
     <!-- Header -->
     <header class="header-logos">
       <div class="header-content flex flec-row">
-        <img src="/RD-Cultura.png" alt="Ministerio de Cultura" class="logo" />
+        <img
+          src="/RD-Cultura.png"
+          alt="Ministerio de Cultura"
+          class="logo"
+        />
         <h1 class="header-title">Votación del Comité de Ética</h1>
       </div>
     </header>
@@ -133,9 +170,18 @@ const reiniciarProceso = () => {
           <div class="card-content">
             <transition name="fade" mode="out-in">
               <!-- Paso 2 -->
-              <div v-if="currentStep === 2" key="step2" class="text-center w-full flex flex-col items-center">
-                <h2 class="text-2xl font-bold mt-4">¡Bienvenido(a), {{ votanteInfo.nombre }}!</h2>
-                <div v-if="votanteInfo" class="votante-info-card mt-6">
+              <div
+                v-if="currentStep === 2"
+                key="step2"
+                class="text-center w-full flex flex-col items-center"
+              >
+                <h2 class="text-2xl font-bold mt-4">
+                  ¡Bienvenido(a), {{ votanteInfo.nombre }}!
+                </h2>
+                <div
+                  v-if="votanteInfo"
+                  class="votante-info-card mt-6"
+                >
                   <div class="flex flex-col gap-2">
                     <p v-if="votanteInfo.cargo">
                       <strong>Cargo:</strong> {{ votanteInfo.cargo }}
@@ -180,8 +226,14 @@ const reiniciarProceso = () => {
 
               <!-- Paso 3 -->
               <div v-else-if="currentStep === 3" key="step3">
-                <p class="text-center text-black mb-5">Seleccione el candidato de su preferencia para su grupo ocupacional.</p>
-                <div v-if="candidatos.length > 0" class="grid grid-cols-3 gap-6 candidate-list">
+                <p class="text-center text-black mb-5">
+                  Seleccione el candidato de su preferencia para su grupo
+                  ocupacional.
+                </p>
+                <div
+                  v-if="candidatos.length > 0"
+                  class="grid grid-cols-3 gap-6 candidate-list"
+                >
                   <div
                     v-for="candidato in candidatos"
                     :key="candidato.id"
@@ -196,10 +248,15 @@ const reiniciarProceso = () => {
                       :value="candidato.id"
                     />
                     <div class="ml-4 flex-grow">
-                      <label :for="candidato.id.toString()" class="font-bold text-xl text-gray-800">
+                      <label
+                        :for="candidato.id.toString()"
+                        class="font-bold text-xl text-gray-800"
+                      >
                         {{ candidato.nombre_completo }}
                       </label>
-                      <p class="text-primary-800 font-medium">{{ candidato.cargo }}</p>
+                      <p class="text-primary-800 font-medium">
+                        {{ candidato.cargo }}
+                      </p>
                       <div class="mt-3 flex flex-wrap gap-2">
                         <Chip
                           v-for="valor in candidato.valores"
@@ -211,14 +268,17 @@ const reiniciarProceso = () => {
                     </div>
                     <i
                       v-if="selectedCandidato === candidato.id"
-                      class="pi pi-check-circle text-2xl text-white check-icon"
+                      class="pi pi-check-circle text-2xl text-green-500 check-icon"
                     ></i>
                   </div>
                 </div>
 
                 <div v-else class="text-center py-8">
                   <i class="pi pi-info-circle text-4xl text-gray-400"></i>
-                  <p class="text-gray-500 mt-4">No hay candidatos registrados para su grupo ocupacional en este proceso.</p>
+                  <p class="text-gray-500 mt-4">
+                    No hay candidatos registrados para su grupo ocupacional en
+                    este proceso.
+                  </p>
                 </div>
 
                 <div class="mt-8">
@@ -234,10 +294,20 @@ const reiniciarProceso = () => {
               </div>
 
               <!-- Paso 4 -->
-              <div v-else-if="currentStep === 4" key="step4" class="text-center py-8">
-                <i class="pi pi-verified text-8xl text-green-500 animate-bounce-in"></i>
-                <h2 class="mt-6 text-3xl font-bold text-gray-800">¡Gracias por su participación!</h2>
-                <p class="text-gray-600 mt-2 text-lg">Su voto ha sido registrado exitosamente.</p>
+              <div
+                v-else-if="currentStep === 4"
+                key="step4"
+                class="text-center py-8"
+              >
+                <i
+                  class="pi pi-verified text-8xl text-green-500 animate-bounce-in"
+                ></i>
+                <h2 class="mt-6 text-3xl font-bold text-gray-800">
+                  ¡Gracias por su participación!
+                </h2>
+                <p class="text-gray-600 mt-2 text-lg">
+                  Su voto ha sido registrado exitosamente.
+                </p>
                 <Button
                   label="Volver al Inicio"
                   icon="pi pi-home"
@@ -336,12 +406,12 @@ body {
 .candidate-card {
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: 1.5rem;
     border: 2px solid #e5e7eb;
     border-radius: 16px;
     cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
     background-color: #ffffff;
     overflow: hidden;
 }
@@ -352,29 +422,31 @@ body {
 }
 .candidate-card.selected {
     border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: white;
-    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, #e0edff, #ffffff);
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.3);
     transform: translateY(-2px) scale(1.01);
 }
-.candidate-card.selected label,
+.candidate-card.selected label {
+    color: var(--primary-color) !important;
+}
 .candidate-card.selected p {
-    color: white !important;
+    color: #1e3a8a !important;
 }
 .check-icon {
     position: absolute;
-    top: 50%;
-    right: 1.5rem;
-    transform: translateY(-50%);
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.8rem;
+    color: var(--primary-color);
 }
 .custom-chip {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: #f0f9ff;
-    font-weight: 500;
-}
-.candidate-card:not(.selected) .custom-chip {
     background-color: #eff6ff;
     color: var(--primary-color);
+    font-weight: 500;
+}
+.candidate-card.selected .custom-chip {
+    background-color: var(--primary-color);
+    color: #ffffff;
 }
 
 /* 🔹 Animaciones fade */
