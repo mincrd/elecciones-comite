@@ -10,13 +10,16 @@ use App\Models\RegistroVoto;
 use App\Models\Voto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 
 class VotacionController extends Controller
 {
-   
+    /**
+     * Verifica estado del votante por cédula.
+     * yaVoto = true si existe cualquier fila en registro_votos con esa cédula.
+     */
     public function getEstadoVotante($cedula)
     {
         // 1) Debe haber proceso Abierto
@@ -36,15 +39,8 @@ class VotacionController extends Controller
             return response()->json(['message' => 'La cédula proporcionada no corresponde a un votante hábil.'], 404);
         }
 
-        // 4) Ya votó = existe un RegistroVoto con esa cédula (opcionalmente filtrado por proceso actual)
-        $regQuery = RegistroVoto::where('cedula', $cedula);
-
-        // Si tu tabla registro_votos tiene columna proceso_id, limita al proceso abierto
-        if (Schema::hasColumn('registro_votos', 'proceso_id')) {
-            $regQuery->where('proceso_id', $procesoActivo->id);
-        }
-
-        $yaVoto = $regQuery->exists();
+        // 4) ¿Ya votó? (bloqueo global por cédula)
+        $yaVoto = RegistroVoto::where('cedula', $cedula)->exists();
 
         return response()->json([
             'esHabil'           => true,
@@ -56,7 +52,10 @@ class VotacionController extends Controller
         ]);
     }
 
-
+    /**
+     * Candidatos por grupo del proceso abierto.
+     * Incluye foto_url absoluta para evitar mixed-content/404.
+     */
     public function getCandidatosPorGrupo($grupo)
     {
         $procesoActivo = Proceso::where('estado', 'Abierto')->first();
@@ -68,23 +67,25 @@ class VotacionController extends Controller
             ->where('grupo_ocupacional', $grupo)
             ->get(['id', 'nombre_completo', 'cargo', 'valores', 'foto_path']);
 
-        // Agregar URL pública de la foto
         $candidatos->transform(function ($p) {
-            $p->foto_url = $p->foto_path ? Storage::url($p->foto_path) : null;
+            $p->foto_url = $p->foto_path ? URL::to(Storage::url($p->foto_path)) : null;
             return $p;
         });
 
         return response()->json($candidatos);
     }
 
+    /**
+     * Registra el voto final.
+     * Regla: si ya existe un RegistroVoto para la cédula → bloquear.
+     */
     public function registrarVoto(Request $request)
     {
         // Validación de entrada
         $validator = Validator::make($request->all(), [
-            'cedula'         => 'required|string|exists:empleados_habiles,cedula',
-            'postulante_id'  => 'required|integer|exists:postulantes,id',
+            'cedula'        => 'required|string|exists:empleados_habiles,cedula',
+            'postulante_id' => 'required|integer|exists:postulantes,id',
         ]);
-
         if ($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
@@ -99,42 +100,31 @@ class VotacionController extends Controller
         $postulante = Postulante::find($request->postulante_id);
         $votante    = EmpleadoHabil::where('cedula', $cedula)->first();
 
-        // Seguridad: postulante debe pertenecer al proceso activo
-        if ($postulante->proceso_id != $procesoActivo->id) {
+        // El candidato debe pertenecer al proceso abierto
+        if ((int)$postulante->proceso_id !== (int)$procesoActivo->id) {
             return response()->json(['message' => 'El candidato no pertenece al proceso activo.'], 403);
         }
 
-        // Seguridad: grupo del votante debe coincidir con el del postulante
+        // Grupo debe coincidir
         if ($votante->grupo_ocupacional !== $postulante->grupo_ocupacional) {
             return response()->json(['message' => 'Conflicto de grupo. No puede votar por este candidato.'], 403);
         }
 
-        // Ejecutar en transacción: crear (o reutilizar) registro y crear voto
-        return DB::transaction(function () use ($cedula, $votante, $postulante, $procesoActivo) {
-            // Buscar si ya existe un registro para esta cédula (y proceso si existe la columna)
-            $regQuery = RegistroVoto::where('cedula', $cedula);
-            if (Schema::hasColumn('registro_votos', 'proceso_id')) {
-                $regQuery->where('proceso_id', $procesoActivo->id);
-            }
-            $registro = $regQuery->latest('id')->first();
+        // BLOQUEAR si ya existe un registro por cédula (sin proceso_id)
+        if (RegistroVoto::where('cedula', $cedula)->exists()) {
+            return response()->json([
+                'message' => 'Ya existe un registro de votación para esta cédula. '
+                    . 'Si hubo un fallo, solicite la anulación en mesa para reintentar.'
+            ], 403);
+        }
 
-            if ($registro && Voto::where('registro_voto_id', $registro->id)->exists()) {
-                return response()->json(['message' => 'Este usuario ya ha emitido su voto.'], 403);
-            }
+        // Transacción: crear registro + voto
+        return DB::transaction(function () use ($votante, $postulante) {
+            $registro = RegistroVoto::create([
+                'cedula'            => $votante->cedula,
+                'grupo_ocupacional' => $votante->grupo_ocupacional,
+            ]);
 
-            // Si no hay registro o el que hay fue anulado, crear uno nuevo
-            if (!$registro) {
-                $payload = [
-                    'cedula'            => $votante->cedula,
-                    'grupo_ocupacional' => $votante->grupo_ocupacional,
-                ];
-                if (Schema::hasColumn('registro_votos', 'proceso_id')) {
-                    $payload['proceso_id'] = $procesoActivo->id;
-                }
-                $registro = RegistroVoto::create($payload);
-            }
-
-            // Crear el voto asociado
             Voto::create([
                 'registro_voto_id' => $registro->id,
                 'postulante_id'    => $postulante->id,
