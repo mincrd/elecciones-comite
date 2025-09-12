@@ -58,8 +58,9 @@ const formPostulante = ref({
   // foto_url llega desde el backend si existe
 });
 
-const fotoFile = ref(null);        // File seleccionado
+const fotoFile = ref(null);        // File seleccionado (solo en el cliente)
 const fotoPreview = ref(null);     // URL.createObjectURL o foto_url existente
+const isUploadingFoto = ref(false);
 
 // Opciones para formularios
 const valoresOptions = ref([
@@ -124,7 +125,54 @@ function onFotoChange(e) {
 }
 
 /* =========================
-   Guardado Proceso/Postulante
+   Subir solo la foto (endpoint dedicado)
+========================= */
+const uploadSoloFoto = async () => {
+  if (!formPostulante.value.id) {
+    toast.add({ severity: 'warn', summary: 'Guarda primero', detail: 'Debes crear/guardar el postulante antes de actualizar su foto.', life: 3500 });
+    return;
+  }
+  if (!fotoFile.value) {
+    toast.add({ severity: 'warn', summary: 'Sin archivo', detail: 'Selecciona una imagen para subir.', life: 2500 });
+    return;
+  }
+  try {
+    isUploadingFoto.value = true;
+    const fd = new FormData();
+    fd.append('foto', fotoFile.value);
+
+    const { data } = await apiClient.post(`/admin/postulantes/${formPostulante.value.id}/foto`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    // Actualiza preview y form con la nueva URL devuelta por el backend
+    if (data?.foto_url) {
+      // libera blob anterior si lo hubiera
+      resetFotoPreview();
+      fotoPreview.value = data.foto_url;
+      formPostulante.value.foto_url = data.foto_url;
+    }
+    // refresca la lista de postulantes para reflejar la nueva foto en la tabla
+    if (selectedProceso.value?.id) {
+      await store.fetchDetallesProceso(selectedProceso.value.id);
+    }
+
+    // Limpia el file seleccionado (opcional)
+    fotoFile.value = null;
+    toast.add({ severity: 'success', summary: 'Foto actualizada', life: 2500 });
+  } catch (e) {
+    const msg =
+      e?.response?.data?.message ||
+      (e?.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : null) ||
+      'No se pudo actualizar la foto.';
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 4000 });
+  } finally {
+    isUploadingFoto.value = false;
+  }
+};
+
+/* =========================
+   Guardado Proceso/Postulante (CRUD principal)
 ========================= */
 const handleSaveProceso = async () => {
   const success = await store.saveProceso(formProceso.value);
@@ -161,6 +209,7 @@ const handleSavePostulante = async () => {
     if (Array.isArray(formPostulante.value.valores)) {
       fd.append('valores', JSON.stringify(formPostulante.value.valores));
     }
+    // Subida de foto junto con el CRUD (opcional). Si prefieres SIEMPRE por endpoint separado, comenta esto.
     if (fotoFile.value) {
       fd.append('foto', fotoFile.value);
     }
@@ -452,25 +501,6 @@ onBeforeUnmount(() => {
                         <div class="text-2xl font-bold text-gray-900">{{ participacion.porcentaje }}%</div>
                       </div>
                     </div>
-
-                    <!-- (Opcional) Desglose por grupo -->
-                    <!--
-                    <div class="mt-4">
-                      <h4 class="font-semibold text-gray-900 mb-2">Por grupo</h4>
-                      <div class="space-y-2">
-                        <div
-                          v-for="g in participacion.por_grupo"
-                          :key="g.grupo"
-                          class="flex items-center justify-between bg-gray-50 p-2 rounded"
-                        >
-                          <span class="text-sm">Grupo {{ g.grupo }}</span>
-                          <span class="text-sm text-gray-700">
-                            {{ g.votos_emitidos }}/{{ g.total_votantes }} ({{ g.porcentaje }}%)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    -->
                   </div>
                 </div>
               </template>
@@ -538,7 +568,7 @@ onBeforeUnmount(() => {
                     </template>
                   </Column>
 
-                  <Column header="Acciones" style="width: 140px">
+                  <Column header="Acciones" style="width: 180px">
                     <template #body="slotProps">
                       <div class="flex space-x-2">
                         <Button
@@ -546,6 +576,12 @@ onBeforeUnmount(() => {
                           class="p-button-text p-button-sm"
                           v-tooltip="'Editar'"
                           @click="openPostulanteModal(slotProps.data)"
+                        />
+                        <Button
+                          icon="pi pi-camera"
+                          class="p-button-text p-button-sm"
+                          v-tooltip="'Cambiar foto'"
+                          @click="() => { openPostulanteModal(slotProps.data); }"
                         />
                         <Button
                           icon="pi pi-trash"
@@ -650,6 +686,16 @@ onBeforeUnmount(() => {
                 />
               </label>
               <p class="text-xs text-gray-500 mt-2">JPG/PNG/WebP máx. 2MB</p>
+
+              <!-- Botón para actualizar SÓLO la foto -->
+              <Button
+                icon="pi pi-cloud-upload"
+                label="Actualizar foto"
+                class="mt-3"
+                :loading="isUploadingFoto"
+                :disabled="!formPostulante.id || !fotoFile || isUploadingFoto"
+                @click="uploadSoloFoto"
+              />
             </div>
           </div>
 
