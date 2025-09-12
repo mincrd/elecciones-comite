@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProcesosStore } from '../stores/procesosStore';
-import { useConfirm } from "primevue/useconfirm";
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import apiClient from '../api/axios';
 
@@ -20,18 +20,16 @@ import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import Checkbox from 'primevue/checkbox';
 
+// Store
 const store = useProcesosStore();
 const confirm = useConfirm();
 const toast = useToast();
 
-const { 
-  procesos, 
-  postulantes, 
-  resultados, 
-  selectedProceso, 
-  isLoading, 
-  totalVotos,
-  chartData 
+const {
+  procesos,
+  postulantes,
+  selectedProceso,
+  isLoading,
 } = storeToRefs(store);
 
 const { fetchProcesos, selectProceso } = store;
@@ -40,7 +38,13 @@ const { fetchProcesos, selectProceso } = store;
    Modales y formularios
 ========================= */
 const showProcesoModal = ref(false);
-const formProceso = ref({ id: null, ano: new Date().getFullYear(), desde: '', hasta: '', estado: 'Cerrado' });
+const formProceso = ref({
+  id: null,
+  ano: new Date().getFullYear(),
+  desde: '',
+  hasta: '',
+  estado: 'Cerrado',
+});
 
 const showPostulanteModal = ref(false);
 const formPostulante = ref({
@@ -58,12 +62,16 @@ const fotoFile = ref(null);        // File seleccionado
 const fotoPreview = ref(null);     // URL.createObjectURL o foto_url existente
 
 // Opciones para formularios
-const valoresOptions = ref(['Colaboración', 'Compromiso', 'Confiabilidad', 'Disciplina', 'Discreción', 'Honestidad', 'Honorabilidad', 'Honradez', 'Probidad', 'Rectitud', 'Responsabilidad', 'Trabajo en equipo', 'Vocación al servicio']);
+const valoresOptions = ref([
+  'Colaboración', 'Compromiso', 'Confiabilidad', 'Disciplina', 'Discreción',
+  'Honestidad', 'Honorabilidad', 'Honradez', 'Probidad', 'Rectitud',
+  'Responsabilidad', 'Trabajo en equipo', 'Vocación al servicio',
+]);
 const grupoOcupacionalOptions = ref(['I', 'II', 'III', 'IV', 'V']);
 
 const openProcesoModal = (proceso = null) => {
-  formProceso.value = proceso 
-    ? { ...proceso, desde: new Date(proceso.desde), hasta: new Date(proceso.hasta) } 
+  formProceso.value = proceso
+    ? { ...proceso, desde: new Date(proceso.desde), hasta: new Date(proceso.hasta) }
     : { id: null, ano: new Date().getFullYear(), desde: '', hasta: '', estado: 'Cerrado' };
   showProcesoModal.value = true;
 };
@@ -76,13 +84,11 @@ const resetFotoPreview = () => {
 };
 
 const openPostulanteModal = (postulante = null) => {
-  // Limpia estado de foto
   resetFotoPreview();
   fotoFile.value = null;
 
   if (postulante) {
     formPostulante.value = { ...postulante };
-    // Usa la foto existente como preview
     fotoPreview.value = postulante.foto_url || null;
   } else {
     formPostulante.value = {
@@ -101,9 +107,13 @@ const openPostulanteModal = (postulante = null) => {
 
 function onFotoChange(e) {
   const file = e.target.files?.[0] ?? null;
+  if (file && file.size > 2 * 1024 * 1024) {
+    toast.add({ severity: 'warn', summary: 'Archivo grande', detail: 'Máximo 2MB.', life: 3000 });
+    e.target.value = '';
+    return;
+  }
   fotoFile.value = file;
   if (file) {
-    // Libera URL anterior
     resetFotoPreview();
     fotoPreview.value = URL.createObjectURL(file);
   } else if (formPostulante.value?.foto_url) {
@@ -126,8 +136,6 @@ const handleSavePostulante = async () => {
     toast.add({ severity: 'warn', summary: 'Seleccione un proceso', detail: 'Debes seleccionar un proceso para asociar el postulante.', life: 3000 });
     return;
   }
-
-  // Validaciones rápidas
   if (!formPostulante.value.nombre_completo?.trim()) {
     toast.add({ severity: 'warn', summary: 'Falta nombre', detail: 'El nombre completo es obligatorio.', life: 3000 });
     return;
@@ -140,25 +148,19 @@ const handleSavePostulante = async () => {
   try {
     const fd = new FormData();
 
-    // Si es update, usa override para multipart
     if (formPostulante.value.id) {
       fd.append('_method', 'PUT');
     }
 
-    // Campos base
     fd.append('proceso_id', String(selectedProceso.value.id));
     fd.append('nombre_completo', formPostulante.value.nombre_completo ?? '');
     if (formPostulante.value.cargo != null) fd.append('cargo', formPostulante.value.cargo);
     if (formPostulante.value.email != null) fd.append('email', formPostulante.value.email);
     if (formPostulante.value.telefono != null) fd.append('telefono', formPostulante.value.telefono);
     fd.append('grupo_ocupacional', formPostulante.value.grupo_ocupacional ?? '');
-
-    // valores: si es array, JSON
     if (Array.isArray(formPostulante.value.valores)) {
       fd.append('valores', JSON.stringify(formPostulante.value.valores));
     }
-
-    // Foto (opcional)
     if (fotoFile.value) {
       fd.append('foto', fotoFile.value);
     }
@@ -203,14 +205,77 @@ const handleDeletePostulante = (id) => {
   });
 };
 
+/* =========================
+   Participación (votos emitidos vs padrón)
+========================= */
+const participacion = ref({
+  total_votantes: 0,
+  votos_emitidos: 0,
+  pendientes: 0,
+  porcentaje: 0,
+  por_grupo: [],
+});
+const isLoadingParticipacion = ref(false);
+
+async function fetchParticipacion(procesoId) {
+  if (!procesoId) return;
+  isLoadingParticipacion.value = true;
+  try {
+    const { data } = await apiClient.get('/admin/votos/estadisticas', {
+      params: { proceso_id: procesoId },
+    });
+    participacion.value = {
+      total_votantes: Number(data.total_votantes ?? 0),
+      votos_emitidos: Number(data.votos_emitidos ?? 0),
+      pendientes: Number(data.pendientes ?? 0),
+      porcentaje: Number(data.porcentaje ?? 0),
+      por_grupo: Array.isArray(data.por_grupo) ? data.por_grupo : [],
+    };
+  } catch (e) {
+    participacion.value = { total_votantes: 0, votos_emitidos: 0, pendientes: 0, porcentaje: 0, por_grupo: [] };
+  } finally {
+    isLoadingParticipacion.value = false;
+  }
+}
+
+const participacionChartData = computed(() => {
+  const em = participacion.value.votos_emitidos;
+  const pen = Math.max(participacion.value.total_votantes - em, 0);
+  return {
+    labels: ['Votos emitidos', 'Pendientes'],
+    datasets: [
+      {
+        data: [em, pen],
+        backgroundColor: ['#10B981', '#E5E7EB'],
+        hoverBackgroundColor: ['#059669', '#D1D5DB'],
+        borderWidth: 0,
+      },
+    ],
+  };
+});
+
+// Chart opciones (donut)
+const chartOptions = ref({
+  plugins: {
+    legend: { position: 'bottom', labels: { usePointStyle: true, color: '#374151' } }
+  },
+  elements: { arc: { borderWidth: 0 } },
+  cutout: '60%',
+});
+
+/* =========================
+   Lifecycle
+========================= */
 onMounted(() => {
   fetchProcesos();
 });
 
-const chartOptions = ref({
-  plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, color: '#374151' } } },
-  elements: { arc: { borderWidth: 0 } },
-  cutout: '60%'
+watch(selectedProceso, (p) => {
+  if (p?.id) fetchParticipacion(p.id);
+});
+
+onBeforeUnmount(() => {
+  resetFotoPreview();
 });
 </script>
 
@@ -250,8 +315,10 @@ const chartOptions = ref({
         <template #content>
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-gray-600 text-sm font-medium">Total Votos</p>
-              <p class="text-3xl font-bold text-gray-900">{{ totalVotos }}</p>
+              <p class="text-gray-600 text-sm font-medium">Votos emitidos</p>
+              <p class="text-3xl font-bold text-gray-900">
+                {{ participacion.votos_emitidos }}
+              </p>
             </div>
             <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <i class="pi pi-chart-pie text-purple-600 text-xl"></i>
@@ -268,9 +335,12 @@ const chartOptions = ref({
           <template #title>
             <div class="flex justify-between items-center">
               <h3 class="text-lg font-semibold text-gray-900">Procesos</h3>
-              <Button icon="pi pi-plus" class="p-button-primary p-button-rounded"
-                      @click="openProcesoModal()"
-                      v-tooltip.left="'Crear nuevo proceso'" />
+              <Button
+                icon="pi pi-plus"
+                class="p-button-primary p-button-rounded"
+                @click="openProcesoModal()"
+                v-tooltip.left="'Crear nuevo proceso'"
+              />
             </div>
           </template>
           <template #content>
@@ -278,24 +348,32 @@ const chartOptions = ref({
               <ProgressSpinner style="width: 40px; height: 40px" />
               <p class="text-gray-500 text-sm">Cargando procesos...</p>
             </div>
+
             <div v-else class="space-y-3">
-              <div v-for="proceso in procesos" :key="proceso.id"
-                   @click="selectProceso(proceso)"
-                   class="p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md"
-                   :class="selectedProceso?.id === proceso.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+              <div
+                v-for="proceso in procesos"
+                :key="proceso.id"
+                @click="selectProceso(proceso)"
+                class="p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md"
+                :class="selectedProceso?.id === proceso.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'"
+              >
                 <div class="flex justify-between items-start">
                   <div class="flex-1">
                     <p class="font-semibold text-gray-900">Año: {{ proceso.ano }}</p>
                     <p class="text-sm text-gray-600">{{ proceso.desde }} - {{ proceso.hasta }}</p>
                   </div>
-                  <Tag :value="proceso.estado"
-                       :severity="proceso.estado === 'Abierto' ? 'success' : 'danger'"
-                       rounded />
+                  <Tag
+                    :value="proceso.estado"
+                    :severity="({ Nuevo:'info', Abierto:'success', Cerrado:'warning', Concluido:'primary', Cancelado:'danger' }[proceso.estado]) || 'secondary'"
+                    rounded
+                  />
                 </div>
                 <div class="mt-2 flex justify-end">
-                  <Button icon="pi pi-pencil"
-                          class="p-button-text p-button-sm"
-                          @click.stop="openProcesoModal(proceso)" />
+                  <Button
+                    icon="pi pi-pencil"
+                    class="p-button-text p-button-sm"
+                    @click.stop="openProcesoModal(proceso)"
+                  />
                 </div>
               </div>
 
@@ -316,14 +394,14 @@ const chartOptions = ref({
           </div>
 
           <div v-else class="space-y-6">
-            <!-- Resultados / gráfico -->
+            <!-- Participación (reemplaza “Resultados”) -->
             <Card class="bg-white shadow-sm border-0">
               <template #title>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-3">
                     <i class="pi pi-chart-pie text-xl text-emerald-600"></i>
                     <div>
-                      <h3 class="text-lg font-semibold text-gray-900">Resultados</h3>
+                      <h3 class="text-lg font-semibold text-gray-900">Participación</h3>
                       <p class="text-sm text-gray-600">Proceso {{ selectedProceso.ano }}</p>
                     </div>
                   </div>
@@ -335,42 +413,65 @@ const chartOptions = ref({
               </template>
 
               <template #content>
-                <div v-if="totalVotos > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                  <div class="flex justify-center">
-                    <div class="relative">
-                      <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-80 h-80" />
-                      <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <div class="text-3xl font-bold text-gray-900">{{ totalVotos }}</div>
-                        <div class="text-sm text-gray-600">Votos</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="space-y-3">
-                    <h4 class="font-semibold text-gray-900 mb-4">Distribución de Votos</h4>
-                    <div
-                      v-for="(res, index) in resultados"
-                      :key="res.id"
-                      class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div class="flex items-center space-x-3">
-                        <div class="w-4 h-4 rounded-full"
-                             :style="{ backgroundColor: chartData.datasets[0]?.backgroundColor?.[index] || '#999' }"></div>
-                        <div>
-                          <div class="font-medium text-gray-900">{{ res.nombre_completo }}</div>
-                          <div class="text-sm text-gray-600">
-                            {{ totalVotos > 0 ? Math.round((res.total_votos / totalVotos) * 100) : 0 }}%
-                          </div>
-                        </div>
-                      </div>
-                      <div class="text-xl font-bold text-gray-900">{{ res.total_votos }}</div>
-                    </div>
-                  </div>
+                <div v-if="isLoadingParticipacion" class="flex items-center justify-center py-10">
+                  <ProgressSpinner />
                 </div>
 
-                <div v-else class="text-center py-12">
-                  <i class="pi pi-chart-bar text-6xl text-gray-200 mb-4"></i>
-                  <h4 class="text-lg font-semibold text-gray-900 mb-2">Sin votos registrados</h4>
-                  <p class="text-gray-600">Los resultados aparecerán cuando se registren los primeros votos</p>
+                <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                  <div class="flex justify-center">
+                    <div class="relative">
+                      <Chart
+                        type="doughnut"
+                        :data="participacionChartData"
+                        :options="chartOptions"
+                        class="w-80 h-80"
+                      />
+                      <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <div class="text-3xl font-bold text-gray-900">{{ participacion.porcentaje }}%</div>
+                        <div class="text-sm text-gray-600">Participación</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="bg-gray-50 rounded-lg p-4 border">
+                        <div class="text-sm text-gray-600">Votantes hábiles</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ participacion.total_votantes }}</div>
+                      </div>
+                      <div class="bg-gray-50 rounded-lg p-4 border">
+                        <div class="text-sm text-gray-600">Votos emitidos</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ participacion.votos_emitidos }}</div>
+                      </div>
+                      <div class="bg-gray-50 rounded-lg p-4 border">
+                        <div class="text-sm text-gray-600">Pendientes</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ participacion.pendientes }}</div>
+                      </div>
+                      <div class="bg-gray-50 rounded-lg p-4 border">
+                        <div class="text-sm text-gray-600">Participación</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ participacion.porcentaje }}%</div>
+                      </div>
+                    </div>
+
+                    <!-- (Opcional) Desglose por grupo -->
+                    <!--
+                    <div class="mt-4">
+                      <h4 class="font-semibold text-gray-900 mb-2">Por grupo</h4>
+                      <div class="space-y-2">
+                        <div
+                          v-for="g in participacion.por_grupo"
+                          :key="g.grupo"
+                          class="flex items-center justify-between bg-gray-50 p-2 rounded"
+                        >
+                          <span class="text-sm">Grupo {{ g.grupo }}</span>
+                          <span class="text-sm text-gray-700">
+                            {{ g.votos_emitidos }}/{{ g.total_votantes }} ({{ g.porcentaje }}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    -->
+                  </div>
                 </div>
               </template>
             </Card>
@@ -386,9 +487,12 @@ const chartOptions = ref({
                       <p class="text-sm text-gray-600">{{ postulantes.length }} candidatos registrados</p>
                     </div>
                   </div>
-                  <Button icon="pi pi-user-plus" label="Agregar"
-                          class="p-button-primary"
-                          @click="openPostulanteModal()" />
+                  <Button
+                    icon="pi pi-user-plus"
+                    label="Agregar"
+                    class="p-button-primary"
+                    @click="openPostulanteModal()"
+                  />
                 </div>
               </template>
 
@@ -411,7 +515,7 @@ const chartOptions = ref({
                     </template>
                   </Column>
 
-                  <Column field="nombre_completo" header="Nombre Completo" class="font-medium"></Column>
+                  <Column field="nombre_completo" header="Nombre Completo" class="font-medium" />
 
                   <Column field="grupo_ocupacional" header="Grupo">
                     <template #body="slotProps">
@@ -419,21 +523,20 @@ const chartOptions = ref({
                     </template>
                   </Column>
 
-                <!-- Reemplaza la columna Contacto por esta -->
-<Column field="valores" header="Valores">
-  <template #body="slotProps">
-    <div class="flex flex-wrap gap-1">
-      <Tag
-        v-for="valor in (slotProps.data.valores || [])"
-        :key="valor"
-        :value="valor"
-        severity="secondary"
-        rounded
-      />
-      <span v-if="!slotProps.data.valores?.length" class="text-gray-400 text-sm">—</span>
-    </div>
-  </template>
-</Column>
+                  <Column field="valores" header="Valores">
+                    <template #body="slotProps">
+                      <div class="flex flex-wrap gap-1">
+                        <Tag
+                          v-for="valor in (slotProps.data.valores || [])"
+                          :key="valor"
+                          :value="valor"
+                          severity="secondary"
+                          rounded
+                        />
+                        <span v-if="!slotProps.data.valores?.length" class="text-gray-400 text-sm">—</span>
+                      </div>
+                    </template>
+                  </Column>
 
                   <Column header="Acciones" style="width: 140px">
                     <template #body="slotProps">
@@ -481,10 +584,12 @@ const chartOptions = ref({
     </div>
 
     <!-- Modal Proceso -->
-    <Dialog v-model:visible="showProcesoModal"
-            :header="formProceso.id ? 'Editar Proceso' : 'Nuevo Proceso'"
-            :modal="true"
-            class="w-full max-w-md mx-4">
+    <Dialog
+      v-model:visible="showProcesoModal"
+      :header="formProceso.id ? 'Editar Proceso' : 'Nuevo Proceso'"
+      :modal="true"
+      class="w-full max-w-md mx-4"
+    >
       <div class="space-y-4 p-2">
         <div>
           <label for="ano" class="block text-sm font-medium text-gray-700 mb-2">Año del Proceso</label>
@@ -512,10 +617,12 @@ const chartOptions = ref({
     </Dialog>
 
     <!-- Modal Postulante (con foto) -->
-    <Dialog v-model:visible="showPostulanteModal"
-            :header="formPostulante.id ? 'Editar Postulante' : 'Nuevo Postulante'"
-            :modal="true"
-            class="w-full max-w-2xl mx-4">
+    <Dialog
+      v-model:visible="showPostulanteModal"
+      :header="formPostulante.id ? 'Editar Postulante' : 'Nuevo Postulante'"
+      :modal="true"
+      class="w-full max-w-2xl mx-4"
+    >
       <div class="space-y-4 p-2">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <!-- Columna foto -->
@@ -585,7 +692,7 @@ const chartOptions = ref({
               </div>
             </div>
           </div>
-        </div>        
+        </div>
       </div>
 
       <template #footer>

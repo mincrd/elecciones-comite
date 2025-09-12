@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\PostulanteController;
 use App\Http\Controllers\Api\Admin\ProcesoController;
 use App\Http\Controllers\Api\Admin\ResultadoController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\VotosAdminController;
 use App\Http\Controllers\Api\VotacionController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +29,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/refresh', [AuthController::class, 'refresh']);
-
+        Route::get('votos/estadisticas', [VotosAdminController::class, 'estadisticas']);
         Route::apiResource('procesos', ProcesoController::class);
         Route::apiResource('postulantes', PostulanteController::class);
         Route::get('resultados/{proceso}', [ResultadoController::class, 'obtenerResultados'])->name('resultados');
