@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Validator;
 
 class VotacionController extends Controller
 {
+   
     public function getEstadoVotante($cedula)
     {
         // 1) Debe haber proceso Abierto
@@ -24,27 +25,26 @@ class VotacionController extends Controller
             return response()->json(['message' => 'No hay un proceso de votación activo en este momento.'], 403);
         }
 
-        if (empty($cedula)) {
+        // 2) Validar cédula
+        if (!filled($cedula)) {
             return response()->json(['message' => 'La cédula es requerida.'], 400);
         }
 
-        // 2) Debe ser hábil
+        // 3) Debe ser hábil
         $empleadoHabil = EmpleadoHabil::where('cedula', $cedula)->first();
         if (!$empleadoHabil) {
             return response()->json(['message' => 'La cédula proporcionada no corresponde a un votante hábil.'], 404);
         }
 
-        // 3) Ya votó = existe un Voto asociado a un RegistroVoto de esta cédula (y opcionalmente de este proceso)
+        // 4) Ya votó = existe un RegistroVoto con esa cédula (opcionalmente filtrado por proceso actual)
         $regQuery = RegistroVoto::where('cedula', $cedula);
+
+        // Si tu tabla registro_votos tiene columna proceso_id, limita al proceso abierto
         if (Schema::hasColumn('registro_votos', 'proceso_id')) {
             $regQuery->where('proceso_id', $procesoActivo->id);
         }
-        $registro = $regQuery->latest('id')->first();
 
-        $yaVoto = false;
-        if ($registro) {
-            $yaVoto = Voto::where('registro_voto_id', $registro->id)->exists();
-        }
+        $yaVoto = $regQuery->exists();
 
         return response()->json([
             'esHabil'           => true,
@@ -55,6 +55,7 @@ class VotacionController extends Controller
             'lugar_trabajo'     => $empleadoHabil->lugar_de_funciones,
         ]);
     }
+
 
     public function getCandidatosPorGrupo($grupo)
     {
