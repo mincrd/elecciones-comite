@@ -59,8 +59,11 @@ export const routes = [
   {
   path: '/pendientes',
   name: 'PendientesVoto',
-  component: () => import('@/views/NoVotantesView.vue'),
-    meta: { requiresAuth: true, title: 'Pendientes de votar', icon: 'pi pi-user-minus' }
+  component: () => import('../views/NoVotantesView.vue'),
+    meta: { requiresAuth: true, 
+      label: 'Pendientes de votar', 
+      icon: 'pi pi-user-minus' ,
+      description: 'Listado de empleados que no han votado',}
    },
   {
     path: '/resultados',
