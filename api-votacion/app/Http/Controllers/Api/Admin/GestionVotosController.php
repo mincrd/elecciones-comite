@@ -67,7 +67,28 @@ class GestionVotosController extends Controller
 
         return response()->json($q->get());
     }
+    public function pendientes() {
+        $listado = EmpleadoHabil::query()
+            ->leftJoin('registro_votos as rv', 'rv.cedula', '=', 'empleados_habiles.cedula')
+            ->whereNull('rv.cedula')
+            ->orderBy('empleados_habiles.grupo_ocupacional')
+            ->orderBy('empleados_habiles.nombre_completo')
+            ->get(['empleados_habiles.*']);
 
+        $resumen = DB::table('empleados_habiles as eh')
+            ->leftJoin('registro_votos as rv', 'rv.cedula', '=', 'eh.cedula')
+            ->whereNull('rv.cedula')
+            ->groupBy('eh.grupo_ocupacional')
+            ->select('eh.grupo_ocupacional', DB::raw('COUNT(*) as pendientes'))
+            ->orderBy('eh.grupo_ocupacional')
+            ->get();
+
+        return response()->json([
+            'total_pendientes' => $listado->count(),
+            'resumen' => $resumen,
+            'listado' => $listado,
+        ]);
+    }
     /**
      * Totales de completos vs incompletos.
      */

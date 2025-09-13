@@ -54,6 +54,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('votos/stats', [GestionVotosController::class, 'stats']);      // totales
         Route::post('votos/anular-incompleto', [GestionVotosController::class, 'anularIncompleto']); // anulación
         Route::get('votos/{registro}', [GestionVotosController::class, 'show']);
+        Route::get('/admin/votantes/pendientes', [GestionVotosController::class, 'pendientes']);
+
     });
 
 });

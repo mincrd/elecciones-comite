@@ -157,8 +157,8 @@ const onCedulaInput = () => {
   <div v-else>
     <header class="header-logos">
       <div class="header-content flex flec-row">
-        <img src="/RD-Cultura.png" alt="Ministerio de Cultura" class="logo" />
-        <h1 class="header-title">Votación del Comité de Ética</h1>
+        <img src="/Cultura.png" alt="Ministerio de Cultura" class="logo" />
+        <h1 class="header-title">Votación de la Comisión de Integridad Gubernamental y Cumplimiento Normativo 2025-2028</h1>
       </div>
     </header>
 
