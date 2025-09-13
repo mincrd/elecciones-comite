@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import apiClient from '@/api/axios';
+import apiClient from '../api/axios';
 import { useToast } from 'primevue/usetoast';
 
 // PrimeVue

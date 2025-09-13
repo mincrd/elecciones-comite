@@ -108,8 +108,8 @@ const onCedulaInput = () => {
       <!-- Formulario -->
       <div class="w-full p-8 sm:p-12">
         <div class="mb-8">
-          <img src="/RD-Cultura.png" alt="Logo" class="h-24 mx-auto mb-6" />
-          <h1 class="text-2xl font-bold text-gray-800 text-center">Votación del Comité de Ética</h1>
+          <img src="/cultura.png" alt="Logo" class="h-24 mx-auto mb-6" />
+          <h1 class="text-2xl font-bold text-gray-800 text-center">Votación de la Comisión de Integridad Gubernamental y Cumplimiento Normativo 2025-2028</h1>
         </div>
 
         <div class="mb-6">
@@ -157,7 +157,7 @@ const onCedulaInput = () => {
   <div v-else>
     <header class="header-logos">
       <div class="header-content flex flec-row">
-        <img src="/Cultura.png" alt="Ministerio de Cultura" class="logo" />
+        <img src="/cultura.png" alt="Ministerio de Cultura" class="logo" />
         <h1 class="header-title">Votación de la Comisión de Integridad Gubernamental y Cumplimiento Normativo 2025-2028</h1>
       </div>
     </header>
