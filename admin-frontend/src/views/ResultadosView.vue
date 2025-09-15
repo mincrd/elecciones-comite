@@ -204,16 +204,17 @@ function ganadorBadge(candidatos, idx) {
    PDF (frontend) - Firmantes y exportación
 ============================ */
 const FIRMANTES = [
+{
+    nombre: '',
+    cargo:
+      'Responsable del Área de Recursos Humanos.',
+  },
   {
     nombre: '',
     cargo:
       'Responsable de Acceso a la Información.',
   },
-  {
-    nombre: '',
-    cargo:
-      'Responsable del Área de Recursos Humanos.',
-  },
+  
   {
     nombre: '',
     cargo:
